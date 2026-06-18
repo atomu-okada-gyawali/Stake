@@ -1,10 +1,16 @@
+// 1. Core Node and config modules first
+import dns from "node:dns";
+import dotenv from "dotenv";
+
+// 2. Execute DNS and Env configuration immediately before other imports run
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+dotenv.config();
+
+// 3. Now import your third-party and local modules
 import express, { ErrorRequestHandler } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { connectDatabase } from "./config/database";
 import authRouter from "./routes/auth.routes";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT ?? "4000";
@@ -22,6 +28,7 @@ const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
 
 app.use(errorHandler);
 
+// Note: Ensure your .env file uses MONGO_URI to match this variable name
 connectDatabase(process.env.MONGO_URI ?? "")
   .then(() => {
     app.listen(Number(PORT), () => {
