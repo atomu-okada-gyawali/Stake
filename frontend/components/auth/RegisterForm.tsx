@@ -1,31 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 
 export default function RegisterForm() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     // Validate passwords match
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
     // Validate password strength
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
@@ -33,7 +32,7 @@ export default function RegisterForm() {
 
     try {
       const response = await apiClient.post("/auth/register", {
-        fullName,
+        username,
         email,
         password,
       });
@@ -44,10 +43,10 @@ export default function RegisterForm() {
       localStorage.setItem("authToken", token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      // Redirect to dashboard
+      toast.success("Account created successfully!");
       router.push("/dashboard");
     } catch (err: any) {
-      setError(
+      toast.error(
         err.response?.data?.message || "Registration failed. Please try again.",
       );
     } finally {
@@ -59,15 +58,15 @@ export default function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Full Name
+          Username
         </label>
         <input
           type="text"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           required
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-          placeholder="John Doe"
+          placeholder="johndoe"
         />
       </div>
 
@@ -112,12 +111,6 @@ export default function RegisterForm() {
           placeholder="••••••••"
         />
       </div>
-
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-          {error}
-        </div>
-      )}
 
       <button
         type="submit"

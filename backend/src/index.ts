@@ -11,6 +11,7 @@ import express, { ErrorRequestHandler } from "express";
 import cors from "cors";
 import { connectDatabase } from "./config/database";
 import authRouter from "./routes/auth.routes";
+import goalRouter from "./routes/goal.routes";
 
 const app = express();
 const PORT = process.env.PORT ?? "4000";
@@ -19,6 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
+app.use("/api/goals", goalRouter);
 
 const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   console.error(err);
