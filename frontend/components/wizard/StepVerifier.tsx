@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWizard } from "./WizardContext";
+import { goalsAPI, CreateGoalPayload } from "../../lib/services";
 import { Search, Person, Checkmark, ArrowRight } from "./Icons";
 import PrimaryButton from "./PrimaryButton";
 
@@ -19,13 +20,63 @@ const friends: Friend[] = [
 
 export default function StepVerifier() {
   const router = useRouter();
-  const { reset } = useWizard();
+  const {
+    goalTitle,
+    description,
+    goalType,
+    startDate,
+    endDate,
+    frequencyMode,
+    selectedDays,
+    milestones,
+    reset,
+  } = useWizard();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const filtered = friends.filter((f) =>
     f.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    const payload: CreateGoalPayload = {
+      title: goalTitle,
+      description: description || undefined,
+      goalType: goalType!,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString(),
+      stakeholders: [selectedId.toString()],
+    };
+
+    if (goalType === "task") {
+      payload.daysOfWeek = frequencyMode === "weekly" ? selectedDays : [];
+    }
+
+    if (goalType === "project") {
+      payload.subtasks = milestones
+        .filter((m) => m.trim().length > 0)
+        .map((title) => ({ title }));
+    }
+
+    try {
+      await goalsAPI.create(payload);
+      reset();
+      router.push("/profile");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Object && "response" in err
+          ? (err as { response: { data: { message: string } } }).response?.data?.message
+          : "Failed to create goal";
+      setError(message ?? "Failed to create goal");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="mt-8">
@@ -84,15 +135,19 @@ export default function StepVerifier() {
           })}
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 border border-red-500/40 bg-red-500/10 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
         <div className="border-t border-[#444933] pt-6">
           <PrimaryButton
             variant="submit"
-            onClick={() => {
-              reset();
-              router.push("/profile");
-            }}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
           >
-            SUBMIT
+            {isSubmitting ? "SUBMITTING..." : "SUBMIT"}
             <ArrowRight />
           </PrimaryButton>
         </div>

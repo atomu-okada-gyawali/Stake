@@ -1,3 +1,4 @@
+import { User } from "../models/User";
 import { createGoal } from "../repositories/goal.repository";
 
 export interface CreateGoalInput {
@@ -9,7 +10,7 @@ export interface CreateGoalInput {
   endDate?: string;
   stakeholders?: string[];
   daysOfWeek?: number[];
-  subtasks?: { title: string; startDate?: string; endDate?: string }[];
+  subtasks?: { title: string }[];
 }
 
 export interface GoalResponse {
@@ -71,6 +72,21 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
     }
   }
 
+  const stakeholders = input.stakeholders ?? [];
+  if (stakeholders.length > 0) {
+    const creator = await User.findById(input.creatorId).select("friends");
+    if (!creator) {
+      throw new Error("Creator not found");
+    }
+    const friendIds = creator.friends.map((f) => f.toString());
+    const invalid = stakeholders.filter((s) => !friendIds.includes(s));
+    if (invalid.length > 0) {
+      throw new Error(
+        `Stakeholders must be friends of the creator. Invalid: ${invalid.join(", ")}`,
+      );
+    }
+  }
+
   const goal = await createGoal({
     creatorId: input.creatorId,
     title: input.title.trim(),
@@ -78,7 +94,7 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
     goalType: input.goalType,
     startDate: input.startDate ? new Date(input.startDate) : undefined,
     endDate: input.endDate ? new Date(input.endDate) : undefined,
-    stakeholders: input.stakeholders ?? [],
+    stakeholders,
     status: "in_progress",
     daysOfWeek: input.goalType === "task" ? (input.daysOfWeek ?? []) : undefined,
     subtasks:
@@ -86,8 +102,6 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
         ? (input.subtasks ?? []).map((st) => ({
             title: st.title,
             isCompleted: false,
-            startDate: st.startDate ? new Date(st.startDate) : undefined,
-            endDate: st.endDate ? new Date(st.endDate) : undefined,
           }))
         : undefined,
   });

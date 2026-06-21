@@ -29,7 +29,7 @@ export default function LoginForm() {
       localStorage.setItem("user", JSON.stringify(user));
 
       // Redirect to dashboard
-      router.push("/dashboard");
+      router.push("/circle-feed");
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Login failed. Please try again.",

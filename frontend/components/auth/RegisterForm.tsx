@@ -44,7 +44,7 @@ export default function RegisterForm() {
       localStorage.setItem("user", JSON.stringify(user));
 
       toast.success("Account created successfully!");
-      router.push("/dashboard");
+      router.push("/circle-feed");
     } catch (err: any) {
       toast.error(
         err.response?.data?.message || "Registration failed. Please try again.",
