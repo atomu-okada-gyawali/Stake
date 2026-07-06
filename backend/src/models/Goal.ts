@@ -4,8 +4,6 @@ export interface ISubtask {
   _id: Types.ObjectId;
   title: string;
   isCompleted: boolean;
-  startDate?: Date;
-  endDate?: Date;
 }
 
 export interface IGoal {
@@ -107,12 +105,6 @@ const SubtaskSchema = new Schema<ISubtask>({
   isCompleted: {
     type: Boolean,
     default: false,
-  },
-  startDate: {
-    type: Date,
-  },
-  endDate: {
-    type: Date,
   },
 });
 

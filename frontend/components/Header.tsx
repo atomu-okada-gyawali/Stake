@@ -1,28 +1,53 @@
-import React from 'react';
+"use client";
+
+import { useRouter, usePathname } from "next/navigation";
+import { clearAuth } from "../lib/auth";
 
 const Header = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+
   return (
     <nav className="fixed top-0 w-full h-[97px] bg-stake-bg/80 backdrop-blur-md border-b border-white/10 px-6 flex items-center justify-between z-50">
-      {/* Logo */}
-      <div className="text-2xl font-black text-white tracking-tight">STAKE</div>
-      
-      {/* Navigation Links */}
+      <button
+        onClick={() => router.push("/circle-feed")}
+        className="text-2xl font-black text-white tracking-tight"
+      >
+        STAKE
+      </button>
+
       <div className="flex items-center gap-8">
-        <button className="text-[20px] font-bold text-stake-muted hover:text-stake-accent transition-colors">
+        <button
+          onClick={() => router.push("/circle-feed")}
+          className={`text-[20px] font-bold transition-colors ${
+            pathname === "/circle-feed"
+              ? "text-stake-accent"
+              : "text-stake-muted hover:text-stake-accent"
+          }`}
+        >
           Circle Feed
         </button>
-        <button className="text-[20px] font-bold text-stake-muted hover:text-stake-accent flex items-center gap-2">
+        <button
+          onClick={() => router.push("/profile")}
+          className={`text-[20px] font-bold flex items-center gap-2 transition-colors ${
+            pathname === "/profile"
+              ? "text-stake-accent"
+              : "text-stake-muted hover:text-stake-accent"
+          }`}
+        >
           <div className="w-3 h-3 border-2 border-current rounded-full" />
           Profile
         </button>
-        <button className="text-[20px] font-bold text-stake-logout hover:opacity-80">
+        <button
+          onClick={() => { clearAuth(); router.push("/"); }}
+          className="text-[20px] font-bold text-stake-logout hover:opacity-80"
+        >
           Log Out
         </button>
-        
+
         <div className="h-6 w-[1px] bg-white/10" />
-        
+
         <div className="flex gap-4">
-          {/* Simple Icon Placeholders */}
           <div className="w-5 h-5 bg-stake-muted opacity-90 rounded-sm cursor-pointer" />
           <div className="w-5 h-5 bg-stake-muted opacity-90 rounded-sm cursor-pointer" />
         </div>

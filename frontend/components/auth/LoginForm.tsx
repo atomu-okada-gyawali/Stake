@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import axios from 'axios';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import apiClient from "@/lib/apiClient";
+import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      const response = await apiClient.post("/auth/login", {
         email,
         password,
       });
@@ -25,13 +25,15 @@ export default function LoginForm() {
       const { token, user } = response.data;
 
       // Store token in localStorage
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       // Redirect to dashboard
-      router.push('/dashboard');
+      router.push("/circle-feed");
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError(
+        err.response?.data?.message || "Login failed. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ export default function LoginForm() {
         disabled={loading}
         className="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
       >
-        {loading ? 'Signing in...' : 'Sign In'}
+        {loading ? "Signing in..." : "Sign In"}
       </button>
     </form>
   );
