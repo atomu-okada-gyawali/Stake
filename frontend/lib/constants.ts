@@ -11,4 +11,14 @@ export const API_ENDPOINTS = {
     LOGOUT: "/auth/logout",
     ME: "/auth/me",
   },
+  FRIENDS: {
+    BASE: "/friends",
+    REQUEST: "/friends/request",
+    ACCEPT: (id: string) => `/friends/request/${id}/accept`,
+    DECLINE: (id: string) => `/friends/request/${id}/decline`,
+    CANCEL: (id: string) => `/friends/request/${id}`,
+    REQUESTS: "/friends/requests",
+    SEARCH: "/friends/search",
+    SUGGESTIONS: "/friends/suggestions",
+  },
 };

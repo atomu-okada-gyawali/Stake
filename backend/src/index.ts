@@ -12,6 +12,7 @@ import cors from "cors";
 import { connectDatabase } from "./config/database";
 import authRouter from "./routes/auth.routes";
 import goalRouter from "./routes/goal.routes";
+import friendRouter from "./routes/friend.routes";
 
 const app = express();
 const PORT = process.env.PORT ?? "4000";
@@ -21,6 +22,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRouter);
 app.use("/api/goals", goalRouter);
+app.use("/api/friends", friendRouter);
 
 const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   console.error(err);

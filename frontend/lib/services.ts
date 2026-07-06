@@ -27,3 +27,29 @@ export const goalsAPI = {
   create: (data: CreateGoalPayload) =>
     apiClient.post('/goals', data),
 };
+
+export const friendsAPI = {
+  sendRequest: (identifier: string) =>
+    apiClient.post('/friends/request', { identifier }),
+
+  acceptRequest: (id: string) =>
+    apiClient.patch(`/friends/request/${id}/accept`),
+
+  declineRequest: (id: string) =>
+    apiClient.patch(`/friends/request/${id}/decline`),
+
+  cancelRequest: (id: string) =>
+    apiClient.delete(`/friends/request/${id}`),
+
+  listFriends: () =>
+    apiClient.get('/friends'),
+
+  listRequests: () =>
+    apiClient.get('/friends/requests'),
+
+  searchUsers: (query: string) =>
+    apiClient.get('/friends/search', { params: { q: query } }),
+
+  getSuggestions: () =>
+    apiClient.get('/friends/suggestions'),
+};

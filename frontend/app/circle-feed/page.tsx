@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import FeedCard from "@/components/FeedCard";
+import AddFriendsModal from "@/components/AddFriendsModal";
+import { friendsAPI } from "@/lib/services";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 const feedItems = [
@@ -22,10 +25,11 @@ const feedItems = [
   },
 ];
 
-const friends = [
-  { id: 1, name: "Friend 1", online: true },
-  { id: 2, name: "Friend 2", online: false },
-];
+interface Friend {
+  id: string;
+  username: string;
+  email: string;
+}
 
 const leaderboard = [
   { rank: 1, name: "Friend 2", pts: 20 },
@@ -34,6 +38,23 @@ const leaderboard = [
 
 export default function CircleFeedPage() {
   const router = useRouter();
+  const [showAddFriends, setShowAddFriends] = useState(false);
+  const [myFriends, setMyFriends] = useState<Friend[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadFriends() {
+      try {
+        const { data } = await friendsAPI.listFriends();
+        setMyFriends(data);
+      } catch {
+        // silently fail
+      } finally {
+        setFriendsLoading(false);
+      }
+    }
+    loadFriends();
+  }, [showAddFriends]);
 
   return (
     <ProtectedRoute>
@@ -85,7 +106,10 @@ export default function CircleFeedPage() {
                     </button>
                   </div>
 
-                  <button className="w-full border border-[#3F3F46] py-3 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors mb-5">
+                  <button
+                    onClick={() => setShowAddFriends(true)}
+                    className="w-full border border-[#3F3F46] py-3 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors mb-5"
+                  >
                     <svg
                       width="20"
                       height="20"
@@ -101,36 +125,40 @@ export default function CircleFeedPage() {
                     </span>
                   </button>
 
-                  <div className="space-y-4">
-                    {friends.map((friend) => (
-                      <div key={friend.id} className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-[#2D2D2D] flex items-center justify-center">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="#6B7280"
-                            strokeWidth="1.5"
-                          >
-                            <circle cx="8" cy="5" r="3" />
-                            <path d="M2 15c0-4 2.7-6 6-6s6 2 6 6" />
-                          </svg>
+                  {friendsLoading ? (
+                    <div className="text-stake-muted/50 text-sm text-center py-4">
+                      Loading...
+                    </div>
+                  ) : myFriends.length === 0 ? (
+                    <div className="text-stake-muted/50 text-sm text-center py-4">
+                      No friends yet
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {myFriends.map((friend) => (
+                        <div key={friend.id} className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-[#2D2D2D] flex items-center justify-center">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="#6B7280"
+                              strokeWidth="1.5"
+                            >
+                              <circle cx="8" cy="5" r="3" />
+                              <path d="M2 15c0-4 2.7-6 6-6s6 2 6 6" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-bold text-[#A1A1AA]">
+                            {friend.username}
+                          </span>
+                          <div className="flex-1" />
+                          <div className="w-2 h-2 rounded-full bg-stake-accent" />
                         </div>
-                        <span className="text-sm font-bold text-[#A1A1AA]">
-                          {friend.name}
-                        </span>
-                        <div className="flex-1" />
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            friend.online
-                              ? "bg-stake-accent"
-                              : "bg-[#3F3F46]"
-                          }`}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -249,6 +277,11 @@ export default function CircleFeedPage() {
           </div>
         </footer>
       </div>
+
+      <AddFriendsModal
+        open={showAddFriends}
+        onClose={() => setShowAddFriends(false)}
+      />
     </ProtectedRoute>
   );
 }
