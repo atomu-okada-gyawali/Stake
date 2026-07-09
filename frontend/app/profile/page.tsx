@@ -1,7 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import HistoryItem from "@/components/HistoryItem";
+import { toast } from "sonner";
+import { goalsAPI } from "@/lib/services";
 
 const stats = [
   {
@@ -36,20 +40,13 @@ const stats = [
   },
 ];
 
-const tasks = [
-  {
-    date: "APRIL 22, 12:14 PM",
-    title: "AFTERNOON RUN",
-    description: "3km run from Anamnagar to Pashupatinath (Round)",
-    variant: "filled" as const,
-  },
-  {
-    date: "APRIL 25, 2 PM",
-    title: "WATER PLANTS",
-    description: "Water plants on balcony and clean the terrace area.",
-    variant: "outlined" as const,
-  },
-];
+interface Task {
+  id: string;
+  date: string;
+  title: string;
+  description: string | undefined;
+  variant: "filled" | "outlined";
+}
 
 const historyItems = [
   {
@@ -79,6 +76,36 @@ function ProgressBar({ fill }: { fill: number }) {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTasks() {
+      try {
+        const { data } = await goalsAPI.list();
+        const mapped: Task[] = (data as { id: string; title: string; description?: string; goalType: string; startDate?: string; endDate?: string; submittedForCurrentPeriod: boolean }[])
+          .filter((g) => !g.submittedForCurrentPeriod)
+          .map((g) => ({
+            id: g.id,
+            date: new Date(g.startDate ?? g.endDate ?? Date.now()).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }).toUpperCase(),
+            title: g.title,
+            description: g.description,
+            variant: "filled" as const,
+          }));
+        setTasks(mapped);
+      } catch {
+        toast.error("Failed to load your tasks");
+      } finally {
+        setTasksLoading(false);
+      }
+    }
+    loadTasks();
+  }, []);
 
   return (
     <div className="min-h-screen bg-stake-bg font-poppins">
@@ -131,49 +158,58 @@ export default function ProfilePage() {
                 </span>
               </div>
 
-              <div className="space-y-4">
-                {tasks.map((task) => (
-                  <div
-                    key={task.title}
-                    className="bg-stake-card border border-[#444933]/30 p-5"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
-                        <span className="text-xs font-bold text-stake-accent uppercase">
-                          {task.date}
-                        </span>
-                        <h3 className="text-white text-2xl font-bold">
-                          {task.title}
-                        </h3>
-                        <p className="text-stake-muted text-base">
-                          {task.description}
-                        </p>
+              {tasksLoading ? (
+                <div className="text-stake-muted/50 text-sm text-center py-8">
+                  Loading tasks...
+                </div>
+              ) : tasks.length === 0 ? (
+                <div className="text-stake-muted/50 text-sm text-center py-8">
+                  No active tasks. Set a new goal to get started.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="bg-stake-card border border-[#444933]/30 p-5"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-stake-accent uppercase">
+                            {task.date}
+                          </span>
+                          <h3 className="text-white text-2xl font-bold">
+                            {task.title}
+                          </h3>
+                          {task.description && (
+                            <p className="text-stake-muted text-base">
+                              {task.description}
+                            </p>
+                          )}
+                        </div>
+                        <svg
+                          className="w-7 h-8 text-stake-accent mt-4 shrink-0"
+                          viewBox="0 0 27 32"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M13.5 2C7.977 2 3.5 6.477 3.5 12v4.5L1 24h25l-2.5-7.5V12c0-5.523-4.477-10-10-10z" />
+                          <path d="M10 24c0 1.933 1.567 3.5 3.5 3.5S17 25.933 17 24" />
+                        </svg>
                       </div>
-                      <svg
-                        className="w-7 h-8 text-stake-accent mt-4 shrink-0"
-                        viewBox="0 0 27 32"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M13.5 2C7.977 2 3.5 6.477 3.5 12v4.5L1 24h25l-2.5-7.5V12c0-5.523-4.477-10-10-10z" />
-                        <path d="M10 24c0 1.933 1.567 3.5 3.5 3.5S17 25.933 17 24" />
-                      </svg>
-                    </div>
-                    <div className="mt-5">
-                      {task.variant === "filled" ? (
-                        <button className="bg-stake-accent text-[#161E00] px-8 py-3 font-bold text-xs uppercase hover:bg-stake-accent/90 transition-colors">
+                      <div className="mt-5">
+                          <button
+                          onClick={() => router.push(`/submit-proof?goalId=${task.id}`)}
+                          className="bg-stake-accent text-[#161E00] px-8 py-3 font-bold text-xs uppercase hover:bg-stake-accent/90 transition-colors"
+                        >
                           SUBMIT PROOF
                         </button>
-                      ) : (
-                        <button className="border border-[#444933] text-white px-8 py-3 font-bold text-xs uppercase hover:bg-white/5 transition-colors">
-                          SUBMIT PROOF
-                        </button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Tasks History */}
@@ -186,87 +222,15 @@ export default function ProfilePage() {
               </div>
 
               <div className="divide-y divide-[#444933]/30">
-                {historyItems.map((item) => {
-                  const isSuccess = item.status === "VERIFIED";
-                  return (
-                    <div
-                      key={item.title}
-                      className="py-5 flex gap-5"
-                    >
-                      <div
-                        className={`w-10 h-10 border flex items-center justify-center shrink-0 ${
-                          isSuccess
-                            ? "border-stake-accent/40"
-                            : "border-stake-dangerText/40"
-                        }`}
-                      >
-                        <svg
-                          className={`w-5 h-5 ${
-                            isSuccess ? "text-stake-accent" : "text-stake-dangerText"
-                          }`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          {isSuccess ? (
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="3"
-                              d="M5 13l4 4L19 7"
-                            />
-                          ) : (
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="3"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          )}
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-stake-muted uppercase tracking-wider">
-                            {item.date}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 uppercase ${
-                              isSuccess
-                                ? "bg-stake-accent/10 text-stake-accent"
-                                : "bg-stake-dangerText/10 text-stake-dangerText"
-                            }`}
-                          >
-                            {item.status === "VERIFIED"
-                              ? "VERIFIED"
-                              : "REPUTATION DROP"}
-                          </span>
-                        </div>
-                        <h4
-                          className={`text-lg font-bold mt-1 ${
-                            isSuccess ? "text-white" : "text-stake-muted"
-                          }`}
-                        >
-                          {item.title}
-                        </h4>
-                        <p
-                          className={`text-xs mt-1 ${
-                            isSuccess
-                              ? "text-stake-muted"
-                              : "text-stake-muted/60"
-                          }`}
-                        >
-                          {item.description}
-                        </p>
-                        {!isSuccess && (
-                          <button className="mt-3 text-stake-dangerText text-[10px] font-bold uppercase hover:opacity-80 transition-opacity">
-                            Submit Failure report
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                {historyItems.map((item) => (
+                  <HistoryItem
+                    key={item.title}
+                    title={item.title}
+                    date={item.date}
+                    description={item.description}
+                    status={item.status}
+                  />
+                ))}
               </div>
             </div>
           </section>

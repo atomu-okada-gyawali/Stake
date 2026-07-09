@@ -23,9 +23,9 @@ export async function register(
     };
 
     const result = await registerUser({
-      username: fullName || username,
-      email: rest.email,
-      password: rest.password,
+      username: fullName || username!,
+      email: rest.email!,
+      password: rest.password!,
     });
 
     res.status(201).json(result);
@@ -38,6 +38,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await loginUser(req.body);
     res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function logout(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }

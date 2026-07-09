@@ -3,6 +3,7 @@
 import { useState } from "react";
 import apiClient from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -31,9 +32,9 @@ export default function LoginForm() {
       // Redirect to dashboard
       router.push("/circle-feed");
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Login failed. Please try again.",
-      );
+      const message = err.response?.data?.message || "Login failed. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

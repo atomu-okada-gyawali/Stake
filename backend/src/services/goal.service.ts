@@ -1,5 +1,6 @@
 import { User } from "../models/User";
-import { createGoal } from "../repositories/goal.repository";
+import { createGoal, findGoalsByUser } from "../repositories/goal.repository";
+import { getCurrentEvidenceStatuses } from "./evidence.service";
 
 export interface CreateGoalInput {
   creatorId: string;
@@ -27,6 +28,7 @@ export interface GoalResponse {
   subtasks?: { title: string; isCompleted: boolean }[];
   createdAt: string;
   updatedAt: string;
+  submittedForCurrentPeriod: boolean;
 }
 
 function formatGoal(goal: Record<string, unknown>): GoalResponse {
@@ -53,6 +55,7 @@ function formatGoal(goal: Record<string, unknown>): GoalResponse {
       : undefined,
     createdAt: new Date(doc.createdAt as string).toISOString(),
     updatedAt: new Date(doc.updatedAt as string).toISOString(),
+    submittedForCurrentPeriod: false,
   };
 }
 
@@ -107,4 +110,23 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
   });
 
   return formatGoal(goal.toObject());
+}
+
+export async function getUserGoals(userId: string): Promise<GoalResponse[]> {
+  const goals = await findGoalsByUser(userId);
+  const formatted = goals.map((g) => formatGoal(g.toObject()));
+
+  const { latestByGoal, latestTodayByGoal } = await getCurrentEvidenceStatuses(
+    userId,
+    formatted.map((g) => g.id),
+  );
+
+  return formatted.map((g) => {
+    const isRecurring = g.goalType === "task" && (g.daysOfWeek?.length ?? 0) > 0;
+    const status = isRecurring ? latestTodayByGoal.get(g.id) : latestByGoal.get(g.id);
+    return {
+      ...g,
+      submittedForCurrentPeriod: status ? status !== "failed" : false,
+    };
+  });
 }

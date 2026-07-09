@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { friendsAPI } from "@/lib/services";
 
 interface AddFriendsModalProps {
@@ -53,8 +54,8 @@ export default function AddFriendsModal({ open, onClose }: AddFriendsModalProps)
         setLoading(true);
         const { data } = await friendsAPI.searchUsers(searchQuery.trim());
         setResults(data);
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error("Search failed:", err);
       } finally {
         setLoading(false);
       }
@@ -68,6 +69,7 @@ export default function AddFriendsModal({ open, onClose }: AddFriendsModalProps)
     setError(null);
     try {
       await friendsAPI.sendRequest(userId);
+      toast.success("Friend request sent!");
       setResults((prev) =>
         prev.map((r) =>
           r.id === userId ? { ...r, hasPendingRequest: true } : r,

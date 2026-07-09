@@ -26,6 +26,33 @@ export const authAPI = {
 export const goalsAPI = {
   create: (data: CreateGoalPayload) =>
     apiClient.post('/goals', data),
+
+  list: () =>
+    apiClient.get('/goals'),
+};
+
+export interface FeedItem {
+  id: string;
+  userName: string;
+  userId: string;
+  goalTitle: string;
+  goalId: string;
+  description?: string;
+  proofData: string;
+  status: "pending" | "verified" | "failed";
+  timestamp: string;
+}
+
+export const evidenceAPI = {
+  submit: (goalId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("goalId", goalId);
+    formData.append("proof", file);
+    return apiClient.post("/evidence", formData);
+  },
+
+  getFeed: () =>
+    apiClient.get<FeedItem[]>("/evidence/feed"),
 };
 
 export const friendsAPI = {

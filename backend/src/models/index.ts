@@ -1,3 +1,3 @@
-export * from './User.js';
-export * from './Goal.js';
-export * from './Evidence.js';
+export * from './User';
+export * from './Goal';
+export * from './Evidence';

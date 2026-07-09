@@ -9,10 +9,12 @@ dotenv.config();
 // 3. Now import your third-party and local modules
 import express, { ErrorRequestHandler } from "express";
 import cors from "cors";
+import path from "node:path";
 import { connectDatabase } from "./config/database";
 import authRouter from "./routes/auth.routes";
 import goalRouter from "./routes/goal.routes";
 import friendRouter from "./routes/friend.routes";
+import evidenceRouter from "./routes/evidence.routes";
 
 const app = express();
 const PORT = process.env.PORT ?? "4000";
@@ -23,6 +25,9 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 app.use("/api/goals", goalRouter);
 app.use("/api/friends", friendRouter);
+app.use("/api/evidence", evidenceRouter);
+
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   console.error(err);

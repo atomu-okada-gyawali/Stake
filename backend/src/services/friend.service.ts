@@ -1,13 +1,18 @@
+import { Types } from "mongoose";
 import { User } from "../models/User";
 import { FriendRequest } from "../models/FriendRequest";
 
 export async function sendFriendRequest(senderId: string, receiverIdentifier: string) {
-  const receiver = await User.findOne({
-    $or: [
-      { username: receiverIdentifier },
-      { email: receiverIdentifier.toLowerCase() },
-    ],
-  });
+  const orConditions: Record<string, unknown>[] = [
+    { username: receiverIdentifier },
+    { email: receiverIdentifier.toLowerCase() },
+  ];
+
+  if (Types.ObjectId.isValid(receiverIdentifier)) {
+    orConditions.push({ _id: receiverIdentifier });
+  }
+
+  const receiver = await User.findOne({ $or: orConditions });
   if (!receiver) {
     throw new Error("User not found");
   }

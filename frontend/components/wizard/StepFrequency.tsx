@@ -41,7 +41,7 @@ export default function StepFrequency() {
 
           <div>
             <span className="text-stake-muted text-xs font-bold uppercase tracking-wider block mb-4">WEEKLY SCHEDULE</span>
-            <div className={`flex gap-2 ${frequencyMode !== "weekly" ? "opacity-40 pointer-events-none" : ""}`}>
+            <div className={`flex gap-2 ${frequencyMode !== "weekly" ? "opacity-40" : ""}`}>
               {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
                 <button
                   key={i}
