@@ -17,6 +17,7 @@ export async function findUserById(id: string): Promise<IUserDocument | null> {
 }
 
 export async function createUser(data: {
+  fullName: string;
   username: string;
   email: string;
   password: string;

@@ -4,6 +4,7 @@ import { Schema, model, Document, Types } from "mongoose";
  * Interface representing a User document in MongoDB.
  */
 export interface IUser {
+  fullName: string;
   username: string;
   email: string;
   password: string;
@@ -15,6 +16,11 @@ export interface IUserDocument extends IUser, Document {}
 
 const UserSchema = new Schema<IUserDocument>(
   {
+    fullName: {
+      type: String,
+      required: [true, "Full name is required"],
+      trim: true,
+    },
     username: {
       type: String,
       required: [true, "Username is required"],

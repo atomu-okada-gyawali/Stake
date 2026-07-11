@@ -9,6 +9,7 @@ import {
 } from '../repositories/user.repository';
 
 export interface RegisterInput {
+  fullName: string;
   username: string;
   email: string;
   password: string;
@@ -32,6 +33,7 @@ export async function registerUser(input: RegisterInput) {
 
   const passwordHash = await hashPassword(input.password);
   const user = await createUser({
+    fullName: input.fullName.trim(),
     username: input.username,
     email: input.email.toLowerCase(),
     password: passwordHash,
@@ -42,6 +44,7 @@ export async function registerUser(input: RegisterInput) {
   return {
     user: {
       id: user._id.toString(),
+      fullName: user.fullName,
       username: user.username,
       email: user.email,
       createdAt: user.createdAt,
@@ -66,6 +69,7 @@ export async function loginUser(input: LoginInput) {
   return {
     user: {
       id: user._id.toString(),
+      fullName: user.fullName,
       username: user.username,
       email: user.email,
       createdAt: user.createdAt,
@@ -101,6 +105,7 @@ export async function changeUserEmail(userId: string, newEmail: string, currentP
 
   return {
     id: updatedUser._id.toString(),
+    fullName: updatedUser.fullName,
     username: updatedUser.username,
     email: updatedUser.email,
     createdAt: updatedUser.createdAt,
