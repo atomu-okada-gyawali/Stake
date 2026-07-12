@@ -1,6 +1,6 @@
 import { User } from "../models/User";
 import { createGoal, findGoalsByUser } from "../repositories/goal.repository";
-import { getCurrentEvidenceStatuses } from "./evidence.service";
+import { getCurrentEvidenceStatuses, getSubtaskEvidenceStatuses } from "./evidence.service";
 
 export interface CreateGoalInput {
   creatorId: string;
@@ -11,7 +11,14 @@ export interface CreateGoalInput {
   endDate?: string;
   stakeholders?: string[];
   daysOfWeek?: number[];
-  subtasks?: { title: string }[];
+  subtasks?: { title: string; deadline: string }[];
+}
+
+export interface SubtaskResponse {
+  id: string;
+  title: string;
+  deadline: string;
+  submitted: boolean;
 }
 
 export interface GoalResponse {
@@ -25,7 +32,7 @@ export interface GoalResponse {
   stakeholders: string[];
   status: string;
   daysOfWeek?: number[];
-  subtasks?: { title: string; isCompleted: boolean }[];
+  subtasks?: SubtaskResponse[];
   createdAt: string;
   updatedAt: string;
   submittedForCurrentPeriod: boolean;
@@ -51,7 +58,14 @@ function formatGoal(goal: Record<string, unknown>): GoalResponse {
     status: doc.status as string,
     daysOfWeek: doc.daysOfWeek as number[] | undefined,
     subtasks: doc.subtasks
-      ? (doc.subtasks as { title: string; isCompleted: boolean }[])
+      ? (doc.subtasks as { _id: { toString(): string }; title: string; deadline: Date }[]).map(
+          (st) => ({
+            id: st._id.toString(),
+            title: st.title,
+            deadline: new Date(st.deadline).toISOString(),
+            submitted: false,
+          }),
+        )
       : undefined,
     createdAt: new Date(doc.createdAt as string).toISOString(),
     updatedAt: new Date(doc.updatedAt as string).toISOString(),
@@ -72,6 +86,28 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
     const valid = input.daysOfWeek.every((d) => d >= 0 && d <= 6);
     if (!valid) {
       throw new Error("daysOfWeek must contain integers between 0 and 6");
+    }
+  }
+
+  if (input.goalType === "project" && input.subtasks) {
+    const startDate = input.startDate ? new Date(input.startDate) : undefined;
+    const endDate = input.endDate ? new Date(input.endDate) : undefined;
+
+    for (const st of input.subtasks) {
+      if (!st.deadline) {
+        throw new Error(`Subtask "${st.title}" requires a deadline`);
+      }
+      const deadline = new Date(st.deadline);
+      if (startDate && deadline < startDate) {
+        throw new Error(
+          `Subtask "${st.title}" deadline cannot be before the project's start date`,
+        );
+      }
+      if (endDate && deadline > endDate) {
+        throw new Error(
+          `Subtask "${st.title}" deadline cannot be after the project's end date`,
+        );
+      }
     }
   }
 
@@ -104,7 +140,7 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
       input.goalType === "project"
         ? (input.subtasks ?? []).map((st) => ({
             title: st.title,
-            isCompleted: false,
+            deadline: new Date(st.deadline),
           }))
         : undefined,
   });
@@ -116,17 +152,31 @@ export async function getUserGoals(userId: string): Promise<GoalResponse[]> {
   const goals = await findGoalsByUser(userId);
   const formatted = goals.map((g) => formatGoal(g.toObject()));
 
+  const taskGoalIds = formatted.filter((g) => g.goalType === "task").map((g) => g.id);
   const { latestByGoal, latestTodayByGoal } = await getCurrentEvidenceStatuses(
     userId,
-    formatted.map((g) => g.id),
+    taskGoalIds,
   );
 
+  const subtaskIds = formatted.flatMap((g) => (g.subtasks ?? []).map((st) => st.id));
+  const latestBySubtask = await getSubtaskEvidenceStatuses(userId, subtaskIds);
+
   return formatted.map((g) => {
-    const isRecurring = g.goalType === "task" && (g.daysOfWeek?.length ?? 0) > 0;
-    const status = isRecurring ? latestTodayByGoal.get(g.id) : latestByGoal.get(g.id);
+    if (g.goalType === "task") {
+      const isRecurring = (g.daysOfWeek?.length ?? 0) > 0;
+      const status = isRecurring ? latestTodayByGoal.get(g.id) : latestByGoal.get(g.id);
+      return {
+        ...g,
+        submittedForCurrentPeriod: status ? status !== "failed" : false,
+      };
+    }
+
     return {
       ...g,
-      submittedForCurrentPeriod: status ? status !== "failed" : false,
+      subtasks: g.subtasks?.map((st) => {
+        const status = latestBySubtask.get(st.id);
+        return { ...st, submitted: status ? status !== "failed" : false };
+      }),
     };
   });
 }

@@ -8,7 +8,7 @@ export interface CreateGoalPayload {
   endDate?: string;
   stakeholders?: string[];
   daysOfWeek?: number[];
-  subtasks?: { title: string }[];
+  subtasks?: { title: string; deadline: string }[];
 }
 
 export const authAPI = {
@@ -44,9 +44,10 @@ export interface FeedItem {
 }
 
 export const evidenceAPI = {
-  submit: (goalId: string, file: File) => {
+  submit: (goalId: string, file: File, subtaskId?: string) => {
     const formData = new FormData();
     formData.append("goalId", goalId);
+    if (subtaskId) formData.append("subtaskId", subtaskId);
     formData.append("proof", file);
     return apiClient.post("/evidence", formData);
   },

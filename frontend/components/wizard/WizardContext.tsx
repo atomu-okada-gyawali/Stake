@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 
+export interface Milestone {
+  title: string;
+  deadline: Date | undefined;
+}
+
 interface WizardState {
   step: number;
   goalTitle: string;
@@ -11,7 +16,7 @@ interface WizardState {
   endDate: Date | undefined;
   frequencyMode: "once" | "weekly";
   selectedDays: number[];
-  milestones: string[];
+  milestones: Milestone[];
 }
 
 interface WizardContextType extends WizardState {
@@ -23,7 +28,7 @@ interface WizardContextType extends WizardState {
   setEndDate: (v: Date | undefined) => void;
   setFrequencyMode: (v: "once" | "weekly") => void;
   setSelectedDays: (v: number[]) => void;
-  setMilestones: (v: string[]) => void;
+  setMilestones: (v: Milestone[]) => void;
   reset: () => void;
 }
 
@@ -36,7 +41,10 @@ const defaults: WizardState = {
   endDate: undefined,
   frequencyMode: "once",
   selectedDays: [0, 1, 2, 3, 4, 5, 6],
-  milestones: ["Initial Benchmarking Session", ""],
+  milestones: [
+    { title: "Initial Benchmarking Session", deadline: undefined },
+    { title: "", deadline: undefined },
+  ],
 };
 
 const WizardContext = createContext<WizardContextType | null>(null);

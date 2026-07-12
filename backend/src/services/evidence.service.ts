@@ -4,6 +4,7 @@ export interface SubmitEvidenceInput {
   goalId: string;
   userId: string;
   proofData: string;
+  subtaskId?: string;
   reflection?: string;
 }
 
@@ -29,8 +30,21 @@ export async function submitEvidence(input: SubmitEvidenceInput) {
     throw new Error("Only the goal creator can submit evidence");
   }
 
+  if (input.subtaskId) {
+    if (goal.goalType !== "project") {
+      throw new Error("subtaskId is only valid for project goals");
+    }
+    const subtasks = (goal as unknown as { subtasks: { _id: { toString(): string } }[] })
+      .subtasks;
+    const subtaskExists = subtasks.some((st) => st._id.toString() === input.subtaskId);
+    if (!subtaskExists) {
+      throw new Error("Subtask not found on this goal");
+    }
+  }
+
   const evidence = await Evidence.create({
     goalId: input.goalId,
+    subtaskId: input.subtaskId,
     userId: input.userId,
     proofData: input.proofData,
     status: "pending",
@@ -39,10 +53,36 @@ export async function submitEvidence(input: SubmitEvidenceInput) {
   return {
     id: evidence._id.toString(),
     goalId: evidence.goalId.toString(),
+    subtaskId: evidence.subtaskId?.toString(),
     proofData: evidence.proofData,
     status: evidence.status,
     submittedAt: (evidence as unknown as { submittedAt: Date }).submittedAt.toISOString(),
   };
+}
+
+export async function getSubtaskEvidenceStatuses(
+  userId: string,
+  subtaskIds: string[],
+): Promise<Map<string, "pending" | "verified" | "failed">> {
+  const latestBySubtask = new Map<string, "pending" | "verified" | "failed">();
+
+  if (subtaskIds.length === 0) {
+    return latestBySubtask;
+  }
+
+  const items = await Evidence.find({ userId, subtaskId: { $in: subtaskIds } }).sort({
+    submittedAt: -1,
+  });
+
+  for (const item of items) {
+    if (!item.subtaskId) continue;
+    const subtaskId = item.subtaskId.toString();
+    if (!latestBySubtask.has(subtaskId)) {
+      latestBySubtask.set(subtaskId, item.status as "pending" | "verified" | "failed");
+    }
+  }
+
+  return latestBySubtask;
 }
 
 export async function getCurrentEvidenceStatuses(

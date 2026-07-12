@@ -42,6 +42,7 @@ const stats = [
 
 interface Task {
   id: string;
+  subtaskId?: string;
   date: string;
   title: string;
   description: string | undefined;
@@ -83,20 +84,49 @@ export default function ProfilePage() {
     async function loadTasks() {
       try {
         const { data } = await goalsAPI.list();
-        const mapped: Task[] = (data as { id: string; title: string; description?: string; goalType: string; startDate?: string; endDate?: string; submittedForCurrentPeriod: boolean }[])
-          .filter((g) => !g.submittedForCurrentPeriod)
-          .map((g) => ({
-            id: g.id,
-            date: new Date(g.startDate ?? g.endDate ?? Date.now()).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }).toUpperCase(),
-            title: g.title,
-            description: g.description,
-            variant: "filled" as const,
-          }));
+        const goals = data as {
+          id: string;
+          title: string;
+          description?: string;
+          goalType: string;
+          startDate?: string;
+          endDate?: string;
+          submittedForCurrentPeriod: boolean;
+          subtasks?: { id: string; title: string; deadline: string; submitted: boolean }[];
+        }[];
+
+        const formatDate = (d: string | number | Date) =>
+          new Date(d).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).toUpperCase();
+
+        const mapped: Task[] = [];
+        for (const g of goals) {
+          if (g.goalType === "project") {
+            for (const st of g.subtasks ?? []) {
+              if (st.submitted) continue;
+              mapped.push({
+                id: g.id,
+                subtaskId: st.id,
+                date: formatDate(st.deadline),
+                title: `${g.title}: ${st.title}`,
+                description: g.description,
+                variant: "filled",
+              });
+            }
+          } else if (!g.submittedForCurrentPeriod) {
+            mapped.push({
+              id: g.id,
+              date: formatDate(g.startDate ?? g.endDate ?? Date.now()),
+              title: g.title,
+              description: g.description,
+              variant: "filled",
+            });
+          }
+        }
         setTasks(mapped);
       } catch {
         toast.error("Failed to load your tasks");
@@ -170,7 +200,7 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   {tasks.map((task) => (
                     <div
-                      key={task.id}
+                      key={task.subtaskId ? `${task.id}-${task.subtaskId}` : task.id}
                       className="bg-stake-card border border-[#444933]/30 p-5"
                     >
                       <div className="flex justify-between items-start">
@@ -200,7 +230,11 @@ export default function ProfilePage() {
                       </div>
                       <div className="mt-5">
                           <button
-                          onClick={() => router.push(`/submit-proof?goalId=${task.id}`)}
+                          onClick={() =>
+                            router.push(
+                              `/submit-proof?goalId=${task.id}${task.subtaskId ? `&subtaskId=${task.subtaskId}` : ""}`,
+                            )
+                          }
                           className="bg-stake-accent text-[#161E00] px-8 py-3 font-bold text-xs uppercase hover:bg-stake-accent/90 transition-colors"
                         >
                           SUBMIT PROOF
