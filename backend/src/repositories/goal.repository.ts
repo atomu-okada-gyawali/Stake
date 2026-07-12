@@ -13,3 +13,7 @@ export async function createGoal(data: Record<string, unknown>): Promise<IGoalDo
   const goal = new Goal(data);
   return goal.save();
 }
+
+export async function findGoalsByUser(userId: string): Promise<IGoalDocument[]> {
+  return Goal.find({ creatorId: userId }).sort({ createdAt: -1 }).exec();
+}

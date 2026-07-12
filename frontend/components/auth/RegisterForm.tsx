@@ -3,28 +3,37 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
+import { setAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import AuthField from "./AuthField";
+import PrimaryButton from "@/components/wizard/PrimaryButton";
+import { ArrowRight } from "@/components/wizard/Icons";
 
 export default function RegisterForm() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
-    // Validate password strength
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    if (!agreed) {
+      toast.error("You must agree to the terms and conditions");
       return;
     }
 
@@ -32,16 +41,14 @@ export default function RegisterForm() {
 
     try {
       const response = await apiClient.post("/auth/register", {
+        fullName,
         username,
         email,
         password,
       });
 
       const { token, user } = response.data;
-
-      // Store token in localStorage
-      localStorage.setItem("authToken", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      setAuth(token, user);
 
       toast.success("Account created successfully!");
       router.push("/circle-feed");
@@ -55,70 +62,70 @@ export default function RegisterForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Username
-        </label>
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-          placeholder="johndoe"
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <AuthField
+        label="Full Name"
+        type="text"
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+        placeholder="e.g. David Goggins"
+        required
+      />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Email Address
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-          placeholder="you@example.com"
-        />
-      </div>
+      <AuthField
+        label="Email"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="performer@stake.co"
+        required
+      />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Password
-        </label>
-        <input
+      <AuthField
+        label="Username"
+        prefix="@"
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="chief_performer"
+        required
+      />
+
+      <div className="grid grid-cols-2 gap-8">
+        <AuthField
+          label="Password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
           placeholder="••••••••"
+          required
         />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Confirm Password
-        </label>
-        <input
+        <AuthField
+          label="Confirm Password"
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
           placeholder="••••••••"
+          required
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-      >
-        {loading ? "Creating account..." : "Sign Up"}
-      </button>
+      <label className="flex items-start gap-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-1 w-5 h-5 shrink-0 border border-[#444933] bg-white accent-stake-accent"
+        />
+        <span className="text-stake-textLight text-xs font-bold uppercase leading-relaxed">
+          I agree to the terms and conditions and understand the stakes.
+        </span>
+      </label>
+
+      <PrimaryButton variant="submit" onClick={() => {}} disabled={loading}>
+        {loading ? "SUBMITTING..." : "SUBMIT"}
+        <ArrowRight />
+      </PrimaryButton>
     </form>
   );
 }

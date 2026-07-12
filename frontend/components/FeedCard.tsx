@@ -5,6 +5,8 @@ interface FeedCardProps {
   timestamp: string;
   goalTitle: string;
   description: string;
+  proofUrl?: string;
+  proofType?: "image" | "video";
   onVerify?: () => void;
   onLike?: () => void;
 }
@@ -14,6 +16,8 @@ const FeedCard: React.FC<FeedCardProps> = ({
   timestamp,
   goalTitle,
   description,
+  proofUrl,
+  proofType,
   onVerify,
   onLike,
 }) => {
@@ -41,14 +45,30 @@ const FeedCard: React.FC<FeedCardProps> = ({
           </p>
         </div>
 
-        {/* Image Placeholder */}
+        {/* Proof Media */}
         <div className="w-full aspect-[16/10] bg-[#0A0A0A] border border-white/5 flex items-center justify-center group relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
-          <div className="z-10 bg-black/60 px-4 py-2 border border-white/10">
-            <span className="text-[10px] font-black text-stake-muted uppercase tracking-[0.2em]">
-              Proof Image Pending
-            </span>
-          </div>
+          {proofUrl && proofType === "video" ? (
+            <video
+              src={proofUrl}
+              controls
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : proofUrl ? (
+            <img
+              src={proofUrl}
+              alt="Proof"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
+              <div className="z-10 bg-black/60 px-4 py-2 border border-white/10">
+                <span className="text-[10px] font-black text-stake-muted uppercase tracking-[0.2em]">
+                  Proof Image Pending
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Actions */}

@@ -2,6 +2,8 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { clearAuth } from "../lib/auth";
+import { authAPI } from "../lib/services";
+import { toast } from "sonner";
 
 const Header = () => {
   const router = useRouter();
@@ -39,7 +41,11 @@ const Header = () => {
           Profile
         </button>
         <button
-          onClick={() => { clearAuth(); router.push("/"); }}
+          onClick={async () => {
+            try { await authAPI.logout(); } catch { toast.error("Failed to log out"); }
+            clearAuth();
+            router.push("/");
+          }}
           className="text-[20px] font-bold text-stake-logout hover:opacity-80"
         >
           Log Out

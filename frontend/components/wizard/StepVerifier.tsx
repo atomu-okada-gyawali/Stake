@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useWizard } from "./WizardContext";
 import { goalsAPI, friendsAPI, CreateGoalPayload } from "../../lib/services";
 import { Search, Person, Checkmark, ArrowRight } from "./Icons";
@@ -79,6 +80,7 @@ export default function StepVerifier() {
 
     try {
       await goalsAPI.create(payload);
+      toast.success("Goal created successfully!");
       reset();
       router.push("/profile");
     } catch (err: unknown) {

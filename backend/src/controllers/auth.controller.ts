@@ -15,18 +15,20 @@ export async function register(
   next: NextFunction,
 ) {
   try {
-    const { fullName, username, ...rest } = req.body as {
+    const { fullName, username, email, password } = req.body as {
       fullName?: string;
       username?: string;
       email?: string;
       password?: string;
     };
 
-    const result = await registerUser({
-      username: fullName || username,
-      email: rest.email,
-      password: rest.password,
-    });
+    if (!fullName || !username || !email || !password) {
+      return res.status(400).json({
+        message: "fullName, username, email, and password are required",
+      });
+    }
+
+    const result = await registerUser({ fullName, username, email, password });
 
     res.status(201).json(result);
   } catch (error) {
@@ -38,6 +40,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await loginUser(req.body);
     res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function logout(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }

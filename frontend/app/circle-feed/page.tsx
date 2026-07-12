@@ -5,25 +5,12 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import FeedCard from "@/components/FeedCard";
 import AddFriendsModal from "@/components/AddFriendsModal";
-import { friendsAPI } from "@/lib/services";
+import SquadRequestsModal from "@/components/SquadRequestsModal";
+import { toast } from "sonner";
+import { evidenceAPI, friendsAPI } from "@/lib/services";
+import type { FeedItem } from "@/lib/services";
+import { API_BASE_URL } from "@/lib/apiClient";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-
-const feedItems = [
-  {
-    userName: "Alex Murphy",
-    timestamp: "2 hours ago",
-    goalTitle: "Drafting Chapter 12.",
-    description:
-      "Finalized the technical architecture for the new handbook. It was a grind but it's done.",
-  },
-  {
-    userName: "Alex Murphy",
-    timestamp: "2 hours ago",
-    goalTitle: "Drafting Chapter 12.",
-    description:
-      "Finalized the technical architecture for the new handbook. It was a grind but it's done.",
-  },
-];
 
 interface Friend {
   id: string;
@@ -39,8 +26,11 @@ const leaderboard = [
 export default function CircleFeedPage() {
   const router = useRouter();
   const [showAddFriends, setShowAddFriends] = useState(false);
+  const [showSquadRequests, setShowSquadRequests] = useState(false);
   const [myFriends, setMyFriends] = useState<Friend[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(true);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
 
   useEffect(() => {
     async function loadFriends() {
@@ -48,13 +38,37 @@ export default function CircleFeedPage() {
         const { data } = await friendsAPI.listFriends();
         setMyFriends(data);
       } catch {
-        // silently fail
+        toast.error("Failed to load your circle");
       } finally {
         setFriendsLoading(false);
       }
     }
     loadFriends();
   }, [showAddFriends]);
+
+  useEffect(() => {
+    async function loadFeed() {
+      try {
+        const { data } = await evidenceAPI.getFeed();
+        setFeedItems(data);
+      } catch {
+        toast.error("Failed to load feed");
+      } finally {
+        setFeedLoading(false);
+      }
+    }
+    loadFeed();
+  }, []);
+
+  const formatTimestamp = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins} minute${mins !== 1 ? "s" : ""} ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days !== 1 ? "s" : ""} ago`;
+  };
 
   return (
     <ProtectedRoute>
@@ -79,17 +93,36 @@ export default function CircleFeedPage() {
               </div>
 
               {/* Feed Cards */}
-              <div className="space-y-6">
-                {feedItems.map((item, i) => (
-                  <FeedCard
-                    key={i}
-                    userName={item.userName}
-                    timestamp={item.timestamp}
-                    goalTitle={item.goalTitle}
-                    description={item.description}
-                  />
-                ))}
-              </div>
+              {feedLoading ? (
+                <div className="text-stake-muted/50 text-sm text-center py-16">
+                  Loading feed...
+                </div>
+              ) : feedItems.length === 0 ? (
+                <div className="text-stake-muted/50 text-sm text-center py-16">
+                  No activity from your circle yet.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {feedItems.map((item) => {
+                    const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
+                    const proofUrl = item.proofData
+                      ? `${uploadsBase}${item.proofData}`
+                      : undefined;
+                    const isVideo = item.proofData?.match(/\.(mp4|mov|avi|webm)$/i);
+                    return (
+                      <FeedCard
+                        key={item.id}
+                        userName={item.userName}
+                        timestamp={formatTimestamp(item.timestamp)}
+                        goalTitle={item.goalTitle}
+                        description={item.description ?? "Submitted proof for this goal."}
+                        proofUrl={proofUrl}
+                        proofType={isVideo ? "video" : "image"}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
             {/* Right Column - Sidebars */}
@@ -101,7 +134,10 @@ export default function CircleFeedPage() {
                     <h2 className="text-white text-lg font-extrabold">
                       MY CIRCLE
                     </h2>
-                    <button className="text-white text-xs font-medium hover:underline">
+                    <button
+                      onClick={() => setShowSquadRequests(true)}
+                      className="text-white text-xs font-medium hover:underline"
+                    >
                       View requests
                     </button>
                   </div>
@@ -281,6 +317,11 @@ export default function CircleFeedPage() {
       <AddFriendsModal
         open={showAddFriends}
         onClose={() => setShowAddFriends(false)}
+      />
+
+      <SquadRequestsModal
+        open={showSquadRequests}
+        onClose={() => setShowSquadRequests(false)}
       />
     </ProtectedRoute>
   );
