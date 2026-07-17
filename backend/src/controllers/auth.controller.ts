@@ -1,12 +1,15 @@
 import { NextFunction, Request, Response } from "express";
 import {
   changeUserEmail,
+  getUserProfile,
   loginUser,
   registerUser,
+  updateUserProfile,
 } from "../services/auth.service";
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
+  file?: Express.Multer.File;
 }
 
 export async function register(
@@ -69,6 +72,45 @@ export async function changeEmail(
     res
       .status(200)
       .json({ message: "Email updated successfully", user: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMe(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const result = await getUserProfile(userId);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfile(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const { username } = req.body as { username?: string };
+    const avatarUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+    const result = await updateUserProfile(userId, { username, avatarUrl });
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

@@ -4,8 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistoryItem from "@/components/HistoryItem";
+import EditProfileModal from "@/components/EditProfileModal";
 import { toast } from "sonner";
-import { goalsAPI } from "@/lib/services";
+import { authAPI, goalsAPI, UserProfile } from "@/lib/services";
+import { setAuth } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/apiClient";
+
+const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
 
 const stats = [
   {
@@ -79,6 +84,21 @@ export default function ProfilePage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    authAPI
+      .getCurrentUser()
+      .then(({ data }) => setUser(data))
+      .catch(() => toast.error("Failed to load your profile"));
+  }, []);
+
+  const handleProfileSaved = (updated: UserProfile) => {
+    setUser(updated);
+    const token = localStorage.getItem("authToken");
+    if (token) setAuth(token, updated);
+  };
 
   useEffect(() => {
     async function loadTasks() {
@@ -147,8 +167,32 @@ export default function ProfilePage() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-stake-muted/20 border border-[#444933]" />
-                <h1 className="text-white text-[32px] font-bold">D. Goggins</h1>
+                <div className="w-10 h-10 rounded-full bg-stake-muted/20 border border-[#444933] overflow-hidden flex items-center justify-center shrink-0">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={`${uploadsBase}${user.avatarUrl}`}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-stake-muted text-sm font-bold">
+                      {user?.username.charAt(0).toUpperCase() ?? ""}
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-white text-[32px] font-bold">
+                  {user?.fullName ?? "..."}
+                </h1>
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  aria-label="Edit profile"
+                  className="text-stake-muted hover:text-stake-accent transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
               </div>
               <button
                 onClick={() => router.push("/goals/new")}
@@ -270,6 +314,15 @@ export default function ProfilePage() {
           </section>
         </div>
       </main>
+
+      {user && (
+        <EditProfileModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={user}
+          onSaved={handleProfileSaved}
+        />
+      )}
     </div>
   );
 }

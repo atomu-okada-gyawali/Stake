@@ -11,6 +11,15 @@ export interface CreateGoalPayload {
   subtasks?: { title: string; deadline: string }[];
 }
 
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
 export const authAPI = {
   login: (email: string, password: string) =>
     apiClient.post('/auth/login', { email, password }),
@@ -18,7 +27,14 @@ export const authAPI = {
   register: (username: string, email: string, password: string) =>
     apiClient.post('/auth/register', { username, email, password }),
 
-  getCurrentUser: () => apiClient.get('/auth/me'),
+  getCurrentUser: () => apiClient.get<UserProfile>('/auth/me'),
+
+  updateProfile: (data: { username?: string; avatar?: File }) => {
+    const formData = new FormData();
+    if (data.username) formData.append("username", data.username);
+    if (data.avatar) formData.append("avatar", data.avatar);
+    return apiClient.patch<UserProfile>('/auth/profile', formData);
+  },
 
   logout: () => apiClient.post('/auth/logout'),
 };

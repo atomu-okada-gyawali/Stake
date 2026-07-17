@@ -8,6 +8,7 @@ export interface IUser {
   username: string;
   email: string;
   password: string;
+  avatarUrl?: string;
   friends: Types.ObjectId[];
   createdAt: Date;
 }
@@ -40,6 +41,10 @@ const UserSchema = new Schema<IUserDocument>(
       type: String,
       required: [true, "Password is required"],
       minlength: [8, "Password must be at least 8 characters long"],
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
     },
     friends: [
       {

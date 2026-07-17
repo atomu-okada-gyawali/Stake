@@ -32,3 +32,10 @@ export async function updateUserEmail(
 ): Promise<IUserDocument | null> {
   return User.findByIdAndUpdate(userId, { email }, { new: true }).exec();
 }
+
+export async function updateUserProfile(
+  userId: string,
+  data: { username?: string; avatarUrl?: string },
+): Promise<IUserDocument | null> {
+  return User.findByIdAndUpdate(userId, data, { new: true }).exec();
+}

@@ -6,6 +6,7 @@ import {
   findUserById,
   findUserByUsername,
   updateUserEmail,
+  updateUserProfile as updateUserProfileRepo,
 } from '../repositories/user.repository';
 
 export interface RegisterInput {
@@ -47,6 +48,7 @@ export async function registerUser(input: RegisterInput) {
       fullName: user.fullName,
       username: user.username,
       email: user.email,
+      avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
     },
     token,
@@ -72,6 +74,7 @@ export async function loginUser(input: LoginInput) {
       fullName: user.fullName,
       username: user.username,
       email: user.email,
+      avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
     },
     token,
@@ -108,6 +111,61 @@ export async function changeUserEmail(userId: string, newEmail: string, currentP
     fullName: updatedUser.fullName,
     username: updatedUser.username,
     email: updatedUser.email,
+    avatarUrl: updatedUser.avatarUrl,
+    createdAt: updatedUser.createdAt,
+  };
+}
+
+export async function getUserProfile(userId: string) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  return {
+    id: user._id.toString(),
+    fullName: user.fullName,
+    username: user.username,
+    email: user.email,
+    avatarUrl: user.avatarUrl,
+    createdAt: user.createdAt,
+  };
+}
+
+export async function updateUserProfile(
+  userId: string,
+  data: { username?: string; avatarUrl?: string },
+) {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const update: { username?: string; avatarUrl?: string } = {};
+
+  if (data.username && data.username !== user.username) {
+    const existingUsername = await findUserByUsername(data.username);
+    if (existingUsername) {
+      throw new Error('Username is already in use');
+    }
+    update.username = data.username;
+  }
+
+  if (data.avatarUrl) {
+    update.avatarUrl = data.avatarUrl;
+  }
+
+  const updatedUser = await updateUserProfileRepo(userId, update);
+  if (!updatedUser) {
+    throw new Error('Failed to update profile');
+  }
+
+  return {
+    id: updatedUser._id.toString(),
+    fullName: updatedUser.fullName,
+    username: updatedUser.username,
+    email: updatedUser.email,
+    avatarUrl: updatedUser.avatarUrl,
     createdAt: updatedUser.createdAt,
   };
 }

@@ -14,26 +14,24 @@ export default function AuthPage() {
           <h1 className="text-white text-5xl font-extrabold tracking-tight">STAKE</h1>
         </div>
 
-        <div className="bg-stake-card p-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+        <div className="bg-stake-card border border-white/5 p-10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.05)]">
           <h2 className="text-white text-[32px] font-bold mb-8">
             {isLogin ? "Login" : "Registration"}
           </h2>
 
-          {isLogin ? <LoginForm /> : <RegisterForm />}
+          {isLogin ? (
+            <LoginForm onToggleMode={() => setIsLogin(false)} />
+          ) : (
+            <RegisterForm onToggleMode={() => setIsLogin(true)} />
+          )}
         </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-stake-muted text-sm">
-            {isLogin
-              ? "Don't have an account? "
-              : "Already have an account? "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-stake-accent font-bold hover:opacity-80 transition-opacity"
-            >
-              {isLogin ? "Sign up" : "Sign in"}
-            </button>
-          </p>
+        <div className="mt-4 flex items-center justify-center gap-4">
+          <div className="w-12 h-px bg-[#444933]" />
+          <span className="text-stake-muted text-[10px] font-bold uppercase tracking-wider">
+            Elite Tier Access Only
+          </span>
+          <div className="w-12 h-px bg-[#444933]" />
         </div>
       </div>
     </div>
