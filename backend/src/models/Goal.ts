@@ -3,7 +3,7 @@ import { Schema, model, Document, Types } from "mongoose";
 export interface ISubtask {
   _id: Types.ObjectId;
   title: string;
-  isCompleted: boolean;
+  deadline: Date;
 }
 
 export interface IGoal {
@@ -102,9 +102,9 @@ const SubtaskSchema = new Schema<ISubtask>({
     required: [true, "Subtask title is required"],
     trim: true,
   },
-  isCompleted: {
-    type: Boolean,
-    default: false,
+  deadline: {
+    type: Date,
+    required: [true, "Subtask deadline is required"],
   },
 });
 

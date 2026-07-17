@@ -74,8 +74,8 @@ export default function StepVerifier() {
 
     if (goalType === "project") {
       payload.subtasks = milestones
-        .filter((m) => m.trim().length > 0)
-        .map((title) => ({ title }));
+        .filter((m) => m.title.trim().length > 0)
+        .map((m) => ({ title: m.title, deadline: m.deadline!.toISOString() }));
     }
 
     try {

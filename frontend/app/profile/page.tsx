@@ -4,8 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistoryItem from "@/components/HistoryItem";
+import EditProfileModal from "@/components/EditProfileModal";
 import { toast } from "sonner";
-import { goalsAPI } from "@/lib/services";
+import { authAPI, goalsAPI, UserProfile } from "@/lib/services";
+import { setAuth } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/apiClient";
+
+const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
 
 const stats = [
   {
@@ -42,6 +47,7 @@ const stats = [
 
 interface Task {
   id: string;
+  subtaskId?: string;
   date: string;
   title: string;
   description: string | undefined;
@@ -78,25 +84,69 @@ export default function ProfilePage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    authAPI
+      .getCurrentUser()
+      .then(({ data }) => setUser(data))
+      .catch(() => toast.error("Failed to load your profile"));
+  }, []);
+
+  const handleProfileSaved = (updated: UserProfile) => {
+    setUser(updated);
+    const token = localStorage.getItem("authToken");
+    if (token) setAuth(token, updated);
+  };
 
   useEffect(() => {
     async function loadTasks() {
       try {
         const { data } = await goalsAPI.list();
-        const mapped: Task[] = (data as { id: string; title: string; description?: string; goalType: string; startDate?: string; endDate?: string; submittedForCurrentPeriod: boolean }[])
-          .filter((g) => !g.submittedForCurrentPeriod)
-          .map((g) => ({
-            id: g.id,
-            date: new Date(g.startDate ?? g.endDate ?? Date.now()).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }).toUpperCase(),
-            title: g.title,
-            description: g.description,
-            variant: "filled" as const,
-          }));
+        const goals = data as {
+          id: string;
+          title: string;
+          description?: string;
+          goalType: string;
+          startDate?: string;
+          endDate?: string;
+          submittedForCurrentPeriod: boolean;
+          subtasks?: { id: string; title: string; deadline: string; submitted: boolean }[];
+        }[];
+
+        const formatDate = (d: string | number | Date) =>
+          new Date(d).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).toUpperCase();
+
+        const mapped: Task[] = [];
+        for (const g of goals) {
+          if (g.goalType === "project") {
+            for (const st of g.subtasks ?? []) {
+              if (st.submitted) continue;
+              mapped.push({
+                id: g.id,
+                subtaskId: st.id,
+                date: formatDate(st.deadline),
+                title: `${g.title}: ${st.title}`,
+                description: g.description,
+                variant: "filled",
+              });
+            }
+          } else if (!g.submittedForCurrentPeriod) {
+            mapped.push({
+              id: g.id,
+              date: formatDate(g.startDate ?? g.endDate ?? Date.now()),
+              title: g.title,
+              description: g.description,
+              variant: "filled",
+            });
+          }
+        }
         setTasks(mapped);
       } catch {
         toast.error("Failed to load your tasks");
@@ -117,8 +167,32 @@ export default function ProfilePage() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-stake-muted/20 border border-[#444933]" />
-                <h1 className="text-white text-[32px] font-bold">D. Goggins</h1>
+                <div className="w-10 h-10 rounded-full bg-stake-muted/20 border border-[#444933] overflow-hidden flex items-center justify-center shrink-0">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={`${uploadsBase}${user.avatarUrl}`}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-stake-muted text-sm font-bold">
+                      {user?.username.charAt(0).toUpperCase() ?? ""}
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-white text-[32px] font-bold">
+                  {user?.fullName ?? "..."}
+                </h1>
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  aria-label="Edit profile"
+                  className="text-stake-muted hover:text-stake-accent transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
               </div>
               <button
                 onClick={() => router.push("/goals/new")}
@@ -170,7 +244,7 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   {tasks.map((task) => (
                     <div
-                      key={task.id}
+                      key={task.subtaskId ? `${task.id}-${task.subtaskId}` : task.id}
                       className="bg-stake-card border border-[#444933]/30 p-5"
                     >
                       <div className="flex justify-between items-start">
@@ -200,7 +274,11 @@ export default function ProfilePage() {
                       </div>
                       <div className="mt-5">
                           <button
-                          onClick={() => router.push(`/submit-proof?goalId=${task.id}`)}
+                          onClick={() =>
+                            router.push(
+                              `/submit-proof?goalId=${task.id}${task.subtaskId ? `&subtaskId=${task.subtaskId}` : ""}`,
+                            )
+                          }
                           className="bg-stake-accent text-[#161E00] px-8 py-3 font-bold text-xs uppercase hover:bg-stake-accent/90 transition-colors"
                         >
                           SUBMIT PROOF
@@ -236,6 +314,15 @@ export default function ProfilePage() {
           </section>
         </div>
       </main>
+
+      {user && (
+        <EditProfileModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={user}
+          onSaved={handleProfileSaved}
+        />
+      )}
     </div>
   );
 }

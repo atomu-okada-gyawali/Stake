@@ -19,7 +19,7 @@ export async function createEvidence(
     console.log("createEvidence body:", req.body);
     console.log("createEvidence file:", req.file);
 
-    const { goalId } = req.body;
+    const { goalId, subtaskId } = req.body;
     if (!goalId) {
       return res.status(400).json({ message: "goalId is required" });
     }
@@ -35,6 +35,7 @@ export async function createEvidence(
       goalId,
       userId,
       proofData,
+      subtaskId: subtaskId || undefined,
     });
 
     res.status(201).json(result);

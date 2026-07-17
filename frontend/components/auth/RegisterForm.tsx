@@ -8,8 +8,13 @@ import { useRouter } from "next/navigation";
 import AuthField from "./AuthField";
 import PrimaryButton from "@/components/wizard/PrimaryButton";
 import { ArrowRight } from "@/components/wizard/Icons";
+import { Button } from "@/components/ActionButton";
 
-export default function RegisterForm() {
+interface RegisterFormProps {
+  onToggleMode: () => void;
+}
+
+export default function RegisterForm({ onToggleMode }: RegisterFormProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -126,6 +131,15 @@ export default function RegisterForm() {
         {loading ? "SUBMITTING..." : "SUBMIT"}
         <ArrowRight />
       </PrimaryButton>
+
+      <div className="pt-6 border-t border-[#444933]">
+        <div className="flex items-center justify-center gap-3">
+          <span className="text-stake-muted text-base">Already have an account?</span>
+          <Button variant="outline-lime" type="button" onClick={onToggleMode}>
+            Sign In
+          </Button>
+        </div>
+      </div>
     </form>
   );
 }

@@ -12,8 +12,10 @@ function SubmitProofContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const goalId = searchParams.get("goalId");
+  const subtaskId = searchParams.get("subtaskId");
 
   const [goalTitle, setGoalTitle] = useState<string | null>(null);
+  const [subtaskTitle, setSubtaskTitle] = useState<string | null>(null);
   const [reflection, setReflection] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,22 +26,28 @@ function SubmitProofContent() {
     async function loadGoal() {
       try {
         const { data } = await goalsAPI.list();
-        const goals = data as { id: string; title: string }[];
+        const goals = data as { id: string; title: string; subtasks?: { id: string; title: string }[] }[];
         const goal = goals.find((g) => g.id === goalId);
-        if (goal) setGoalTitle(goal.title);
+        if (goal) {
+          setGoalTitle(goal.title);
+          if (subtaskId) {
+            const subtask = goal.subtasks?.find((st) => st.id === subtaskId);
+            setSubtaskTitle(subtask?.title ?? null);
+          }
+        }
       } catch {
         setGoalTitle("Unknown Goal");
       }
     }
     loadGoal();
-  }, [goalId]);
+  }, [goalId, subtaskId]);
 
   const handleSubmit = async () => {
     if (!goalId || !file) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      await evidenceAPI.submit(goalId, file);
+      await evidenceAPI.submit(goalId, file, subtaskId ?? undefined);
       toast.success("Proof submitted successfully!");
       router.push("/profile");
     } catch (err: unknown) {
@@ -83,7 +91,11 @@ function SubmitProofContent() {
                 <path d="M8.5 1h-6a1 1 0 00-1 1v9a1 1 0 001 1h6a1 1 0 001-1V2a1 1 0 00-1-1z" />
                 <path d="M7 1v2H4V1" />
               </svg>
-              <span className="text-white text-xs font-bold">TASK: {goalTitle.toUpperCase()}</span>
+              <span className="text-white text-xs font-bold">
+                {subtaskTitle
+                  ? `${goalTitle.toUpperCase()} — ${subtaskTitle.toUpperCase()}`
+                  : `TASK: ${goalTitle.toUpperCase()}`}
+              </span>
             </div>
           )}
 

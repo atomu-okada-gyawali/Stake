@@ -8,8 +8,13 @@ import { toast } from "sonner";
 import AuthField from "./AuthField";
 import PrimaryButton from "@/components/wizard/PrimaryButton";
 import { ArrowRight } from "@/components/wizard/Icons";
+import { Button } from "@/components/ActionButton";
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onToggleMode: () => void;
+}
+
+export default function LoginForm({ onToggleMode }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,9 +63,26 @@ export default function LoginForm() {
       />
 
       <PrimaryButton variant="submit" onClick={() => {}} disabled={loading}>
-        {loading ? "SIGNING IN..." : "SIGN IN"}
+        {loading ? "SUBMITTING..." : "SUBMIT"}
         <ArrowRight />
       </PrimaryButton>
+
+      <div className="pt-6 border-t border-[#444933] space-y-6">
+        <div className="flex items-center justify-center gap-3">
+          <span className="text-stake-muted text-base">New to the squad?</span>
+          <Button variant="outline-lime" type="button" onClick={onToggleMode}>
+            Register
+          </Button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => toast.info("Password reset isn't available yet")}
+          className="block mx-auto text-stake-muted text-xs font-bold uppercase tracking-wider hover:text-white transition-colors"
+        >
+          Forgot password?
+        </button>
+      </div>
     </form>
   );
 }

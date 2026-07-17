@@ -8,7 +8,16 @@ export interface CreateGoalPayload {
   endDate?: string;
   stakeholders?: string[];
   daysOfWeek?: number[];
-  subtasks?: { title: string }[];
+  subtasks?: { title: string; deadline: string }[];
+}
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  avatarUrl?: string;
+  createdAt: string;
 }
 
 export const authAPI = {
@@ -18,7 +27,14 @@ export const authAPI = {
   register: (username: string, email: string, password: string) =>
     apiClient.post('/auth/register', { username, email, password }),
 
-  getCurrentUser: () => apiClient.get('/auth/me'),
+  getCurrentUser: () => apiClient.get<UserProfile>('/auth/me'),
+
+  updateProfile: (data: { username?: string; avatar?: File }) => {
+    const formData = new FormData();
+    if (data.username) formData.append("username", data.username);
+    if (data.avatar) formData.append("avatar", data.avatar);
+    return apiClient.patch<UserProfile>('/auth/profile', formData);
+  },
 
   logout: () => apiClient.post('/auth/logout'),
 };
@@ -44,9 +60,10 @@ export interface FeedItem {
 }
 
 export const evidenceAPI = {
-  submit: (goalId: string, file: File) => {
+  submit: (goalId: string, file: File, subtaskId?: string) => {
     const formData = new FormData();
     formData.append("goalId", goalId);
+    if (subtaskId) formData.append("subtaskId", subtaskId);
     formData.append("proof", file);
     return apiClient.post("/evidence", formData);
   },
