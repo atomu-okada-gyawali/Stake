@@ -39,3 +39,7 @@ export async function updateUserProfile(
 ): Promise<IUserDocument | null> {
   return User.findByIdAndUpdate(userId, data, { new: true }).exec();
 }
+
+export async function incrementUserScore(userId: string, delta: number): Promise<void> {
+  await User.findByIdAndUpdate(userId, { $inc: { score: delta } }).exec();
+}

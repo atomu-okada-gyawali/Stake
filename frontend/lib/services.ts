@@ -72,6 +72,13 @@ export const evidenceAPI = {
     apiClient.get<FeedItem[]>("/evidence/feed"),
 };
 
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  score: number;
+  isCurrentUser: boolean;
+}
+
 export const friendsAPI = {
   sendRequest: (identifier: string) =>
     apiClient.post('/friends/request', { identifier }),
@@ -96,4 +103,7 @@ export const friendsAPI = {
 
   getSuggestions: () =>
     apiClient.get('/friends/suggestions'),
+
+  getLeaderboard: () =>
+    apiClient.get<LeaderboardEntry[]>('/friends/leaderboard'),
 };

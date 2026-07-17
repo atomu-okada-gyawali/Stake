@@ -1,4 +1,7 @@
 import { Evidence, Goal, User } from "../models";
+import { incrementUserScore } from "../repositories/user.repository";
+
+const POINTS_PER_SUBMISSION = 10;
 
 export interface SubmitEvidenceInput {
   goalId: string;
@@ -49,6 +52,8 @@ export async function submitEvidence(input: SubmitEvidenceInput) {
     proofData: input.proofData,
     status: "pending",
   });
+
+  await incrementUserScore(input.userId, POINTS_PER_SUBMISSION);
 
   return {
     id: evidence._id.toString(),
@@ -126,6 +131,35 @@ export async function getCurrentEvidenceStatuses(
   }
 
   return { latestByGoal, latestTodayByGoal };
+}
+
+function toDateKey(d: Date): string {
+  return new Date(d).toISOString().slice(0, 10);
+}
+
+export async function getSubmittedDateSets(
+  userId: string,
+  goalIds: string[],
+): Promise<Map<string, Set<string>>> {
+  const dateSetsByGoal = new Map<string, Set<string>>();
+
+  if (goalIds.length === 0) {
+    return dateSetsByGoal;
+  }
+
+  const items = await Evidence.find({ userId, goalId: { $in: goalIds } });
+
+  for (const item of items) {
+    if (item.status === "failed") continue;
+    const goalId = item.goalId.toString();
+    const submittedAt = (item as unknown as { submittedAt: Date }).submittedAt;
+    if (!dateSetsByGoal.has(goalId)) {
+      dateSetsByGoal.set(goalId, new Set());
+    }
+    dateSetsByGoal.get(goalId)!.add(toDateKey(submittedAt));
+  }
+
+  return dateSetsByGoal;
 }
 
 export async function getFeed(userId: string): Promise<FeedItem[]> {

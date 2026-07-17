@@ -4,6 +4,7 @@ export interface ISubtask {
   _id: Types.ObjectId;
   title: string;
   deadline: Date;
+  deadlinePenaltyApplied: boolean;
 }
 
 export interface IGoal {
@@ -22,6 +23,7 @@ export interface IGoal {
 export interface ITaskGoal extends IGoal {
   goalType: "task";
   daysOfWeek: number[]; // e.g. [1, 3, 5] representing Mon, Wed, Fri
+  penalizedDates: Date[]; // occurrence dates already penalized for a missed deadline
 }
 
 export interface IProjectGoal extends IGoal {
@@ -94,6 +96,10 @@ const TaskGoalSchema = new Schema<ITaskGoalDocument>({
         "daysOfWeek must contain integers between 0 (Sunday) and 6 (Saturday).",
     },
   },
+  penalizedDates: {
+    type: [Date],
+    default: [],
+  },
 });
 
 const SubtaskSchema = new Schema<ISubtask>({
@@ -105,6 +111,10 @@ const SubtaskSchema = new Schema<ISubtask>({
   deadline: {
     type: Date,
     required: [true, "Subtask deadline is required"],
+  },
+  deadlinePenaltyApplied: {
+    type: Boolean,
+    default: false,
   },
 });
 

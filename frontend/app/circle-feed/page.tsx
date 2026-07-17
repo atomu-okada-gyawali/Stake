@@ -8,7 +8,7 @@ import AddFriendsModal from "@/components/AddFriendsModal";
 import SquadRequestsModal from "@/components/SquadRequestsModal";
 import { toast } from "sonner";
 import { evidenceAPI, friendsAPI } from "@/lib/services";
-import type { FeedItem } from "@/lib/services";
+import type { FeedItem, LeaderboardEntry } from "@/lib/services";
 import { API_BASE_URL } from "@/lib/apiClient";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
@@ -18,11 +18,6 @@ interface Friend {
   email: string;
 }
 
-const leaderboard = [
-  { rank: 1, name: "Friend 2", pts: 20 },
-  { rank: 2, name: "Friend 1", pts: 10 },
-];
-
 export default function CircleFeedPage() {
   const router = useRouter();
   const [showAddFriends, setShowAddFriends] = useState(false);
@@ -31,6 +26,8 @@ export default function CircleFeedPage() {
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
   useEffect(() => {
     async function loadFriends() {
@@ -47,6 +44,20 @@ export default function CircleFeedPage() {
   }, [showAddFriends]);
 
   useEffect(() => {
+    async function loadLeaderboard() {
+      try {
+        const { data } = await friendsAPI.getLeaderboard();
+        setLeaderboard(data);
+      } catch {
+        toast.error("Failed to load the leaderboard");
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    }
+    loadLeaderboard();
+  }, [showAddFriends]);
+
+  useEffect(() => {
     async function loadFeed() {
       try {
         const { data } = await evidenceAPI.getFeed();
@@ -59,6 +70,12 @@ export default function CircleFeedPage() {
     }
     loadFeed();
   }, []);
+
+  const ordinal = (n: number) => {
+    const suffixes = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
+  };
 
   const formatTimestamp = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -222,67 +239,74 @@ export default function CircleFeedPage() {
                     </h2>
                   </div>
 
-                  <div className="space-y-px">
-                    {leaderboard.map((entry) => {
-                      const isFirst = entry.rank === 1;
-                      return (
-                        <div
-                          key={entry.rank}
-                          className={`flex items-center px-4 py-3 ${
-                            isFirst
-                              ? "bg-stake-accent/5 border border-stake-accent"
-                              : "bg-[#1C1B1B] border border-[#2D2D2D]"
-                          }`}
-                        >
-                          <span
-                            className={`w-10 text-lg font-extrabold italic ${
+                  {leaderboardLoading ? (
+                    <div className="text-stake-muted/50 text-sm text-center py-4">
+                      Loading...
+                    </div>
+                  ) : leaderboard.length === 0 ? (
+                    <div className="text-stake-muted/50 text-sm text-center py-4">
+                      No rankings yet
+                    </div>
+                  ) : (
+                    <div className="space-y-px">
+                      {leaderboard.map((entry, index) => {
+                        const rank = index + 1;
+                        const isFirst = rank === 1;
+                        return (
+                          <div
+                            key={entry.id}
+                            className={`flex items-center px-4 py-3 ${
                               isFirst
-                                ? "text-stake-accent"
-                                : "text-[#6B7280]"
+                                ? "bg-stake-accent/5 border border-stake-accent"
+                                : "bg-[#1C1B1B] border border-[#2D2D2D]"
                             }`}
                           >
-                            {entry.rank === 1
-                              ? "1st"
-                              : entry.rank === 2
-                              ? "2nd"
-                              : `${entry.rank}th`}
-                          </span>
-                          <div className="flex-1">
                             <span
-                              className={`text-base font-extrabold ${
-                                isFirst ? "text-white" : "text-[#A1A1AA]"
-                              }`}
-                            >
-                              {entry.name}
-                            </span>
-                            {isFirst && (
-                              <div className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
-                                CONSISTENCY STREAK
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span
-                              className={`text-lg font-extrabold ${
-                                isFirst ? "text-white" : "text-[#A1A1AA]"
-                              }`}
-                            >
-                              {entry.pts}
-                            </span>
-                            <span
-                              className={`text-xs font-bold ${
+                              className={`w-10 text-lg font-extrabold italic ${
                                 isFirst
                                   ? "text-stake-accent"
                                   : "text-[#6B7280]"
                               }`}
                             >
-                              Pts
+                              {ordinal(rank)}
                             </span>
+                            <div className="flex-1">
+                              <span
+                                className={`text-base font-extrabold ${
+                                  isFirst ? "text-white" : "text-[#A1A1AA]"
+                                }`}
+                              >
+                                {entry.username}
+                              </span>
+                              {entry.isCurrentUser && (
+                                <div className="text-[10px] font-bold text-stake-accent uppercase tracking-wider">
+                                  YOU
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span
+                                className={`text-lg font-extrabold ${
+                                  isFirst ? "text-white" : "text-[#A1A1AA]"
+                                }`}
+                              >
+                                {entry.score}
+                              </span>
+                              <span
+                                className={`text-xs font-bold ${
+                                  isFirst
+                                    ? "text-stake-accent"
+                                    : "text-[#6B7280]"
+                                }`}
+                              >
+                                Pts
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   <button className="w-full text-center text-xs font-bold text-[#6B7280] uppercase tracking-wider mt-5 hover:text-white transition-colors">
                     VIEW ALL RANKINGS

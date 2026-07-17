@@ -8,6 +8,7 @@ import {
   listRequests,
   search,
   suggestions,
+  leaderboard,
 } from "../controllers/friend.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 
@@ -21,5 +22,6 @@ router.get("/", requireAuth, listFriends);
 router.get("/requests", requireAuth, listRequests);
 router.get("/search", requireAuth, search);
 router.get("/suggestions", requireAuth, suggestions);
+router.get("/leaderboard", requireAuth, leaderboard);
 
 export default router;

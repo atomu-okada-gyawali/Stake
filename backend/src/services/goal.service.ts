@@ -1,6 +1,20 @@
 import { User } from "../models/User";
-import { createGoal, findGoalsByUser } from "../repositories/goal.repository";
-import { getCurrentEvidenceStatuses, getSubtaskEvidenceStatuses } from "./evidence.service";
+import { ITaskGoalDocument, IProjectGoalDocument } from "../models/Goal";
+import {
+  createGoal,
+  findGoalsByUser,
+  addPenalizedDates,
+  markGoalFailed,
+  markSubtaskPenalized,
+} from "../repositories/goal.repository";
+import { incrementUserScore } from "../repositories/user.repository";
+import {
+  getCurrentEvidenceStatuses,
+  getSubtaskEvidenceStatuses,
+  getSubmittedDateSets,
+} from "./evidence.service";
+
+const DEADLINE_MISS_PENALTY = 5;
 
 export interface CreateGoalInput {
   creatorId: string;
@@ -148,18 +162,129 @@ export async function createGoalForUser(input: CreateGoalInput): Promise<GoalRes
   return formatGoal(goal.toObject());
 }
 
+function toDateKey(d: Date): string {
+  return new Date(d).toISOString().slice(0, 10);
+}
+
+/** Returns the calendar dates (midnight, local) on which a task goal was due but has already elapsed. */
+function getElapsedTaskOccurrences(goal: ITaskGoalDocument): Date[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const startDate = goal.startDate ? new Date(goal.startDate) : undefined;
+  const endDate = goal.endDate ? new Date(goal.endDate) : undefined;
+
+  if (!goal.daysOfWeek || goal.daysOfWeek.length === 0) {
+    // One-off task: its single "occurrence" is its own deadline (endDate, falling back to startDate).
+    const deadline = endDate ?? startDate;
+    if (!deadline) return [];
+    const d = new Date(deadline);
+    d.setHours(0, 0, 0, 0);
+    return d < today ? [d] : [];
+  }
+
+  if (!startDate) return [];
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const rangeEnd = endDate && endDate < yesterday ? endDate : yesterday;
+
+  const occurrences: Date[] = [];
+  const cursor = new Date(startDate);
+  cursor.setHours(0, 0, 0, 0);
+  while (cursor <= rangeEnd) {
+    if (goal.daysOfWeek.includes(cursor.getDay())) {
+      occurrences.push(new Date(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return occurrences;
+}
+
+/** Deducts points for any elapsed task occurrence that was never submitted, once per occurrence. */
+async function applyTaskDeadlinePenalties(
+  userId: string,
+  goal: ITaskGoalDocument,
+  submittedDates: Set<string>,
+): Promise<void> {
+  if (goal.status !== "in_progress") return;
+
+  const occurrences = getElapsedTaskOccurrences(goal);
+  if (occurrences.length === 0) return;
+
+  const alreadyPenalized = new Set((goal.penalizedDates ?? []).map((d) => toDateKey(d)));
+  const missed = occurrences.filter(
+    (occ) => !alreadyPenalized.has(toDateKey(occ)) && !submittedDates.has(toDateKey(occ)),
+  );
+  if (missed.length === 0) return;
+
+  const isRecurring = goal.daysOfWeek.length > 0;
+  await incrementUserScore(userId, -DEADLINE_MISS_PENALTY * missed.length);
+  await addPenalizedDates(goal._id.toString(), missed);
+  goal.penalizedDates = [...(goal.penalizedDates ?? []), ...missed];
+
+  if (!isRecurring) {
+    await markGoalFailed(goal._id.toString());
+    goal.status = "failed";
+  }
+}
+
+/** Deducts points for any project subtask whose deadline has elapsed without submitted evidence. */
+async function applyProjectSubtaskPenalties(
+  userId: string,
+  goal: IProjectGoalDocument,
+  latestBySubtask: Map<string, "pending" | "verified" | "failed">,
+): Promise<void> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const st of goal.subtasks) {
+    if (st.deadlinePenaltyApplied) continue;
+
+    const deadline = new Date(st.deadline);
+    deadline.setHours(0, 0, 0, 0);
+    if (deadline >= today) continue;
+
+    const status = latestBySubtask.get(st._id.toString());
+    const submitted = status ? status !== "failed" : false;
+    if (submitted) continue;
+
+    await incrementUserScore(userId, -DEADLINE_MISS_PENALTY);
+    await markSubtaskPenalized(goal._id.toString(), st._id.toString());
+    st.deadlinePenaltyApplied = true;
+  }
+}
+
 export async function getUserGoals(userId: string): Promise<GoalResponse[]> {
   const goals = await findGoalsByUser(userId);
-  const formatted = goals.map((g) => formatGoal(g.toObject()));
 
-  const taskGoalIds = formatted.filter((g) => g.goalType === "task").map((g) => g.id);
+  const taskGoals = goals.filter((g) => g.goalType === "task") as unknown as ITaskGoalDocument[];
+  const projectGoals = goals.filter(
+    (g) => g.goalType === "project",
+  ) as unknown as IProjectGoalDocument[];
+
+  const taskGoalIds = taskGoals.map((g) => g._id.toString());
   const { latestByGoal, latestTodayByGoal } = await getCurrentEvidenceStatuses(
     userId,
     taskGoalIds,
   );
+  const submittedDateSets = await getSubmittedDateSets(userId, taskGoalIds);
 
-  const subtaskIds = formatted.flatMap((g) => (g.subtasks ?? []).map((st) => st.id));
+  const subtaskIds = projectGoals.flatMap((g) => g.subtasks.map((st) => st._id.toString()));
   const latestBySubtask = await getSubtaskEvidenceStatuses(userId, subtaskIds);
+
+  for (const goal of taskGoals) {
+    await applyTaskDeadlinePenalties(
+      userId,
+      goal,
+      submittedDateSets.get(goal._id.toString()) ?? new Set(),
+    );
+  }
+  for (const goal of projectGoals) {
+    await applyProjectSubtaskPenalties(userId, goal, latestBySubtask);
+  }
+
+  const formatted = goals.map((g) => formatGoal(g.toObject()));
 
   return formatted.map((g) => {
     if (g.goalType === "task") {
