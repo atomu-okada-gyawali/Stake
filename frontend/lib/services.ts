@@ -107,3 +107,36 @@ export const friendsAPI = {
   getLeaderboard: () =>
     apiClient.get<LeaderboardEntry[]>('/friends/leaderboard'),
 };
+
+export interface FailureHistoryItem {
+  goalId: string;
+  subtaskId?: string;
+  occurrenceDate?: string;
+  title: string;
+  description?: string;
+  date: string;
+  reported: boolean;
+  reason?: string;
+}
+
+export const failuresAPI = {
+  list: () => apiClient.get<FailureHistoryItem[]>('/failures'),
+
+  submitReport: (data: {
+    goalId: string;
+    subtaskId?: string;
+    occurrenceDate?: string;
+    reason: string;
+  }) => apiClient.post('/failures', data),
+};
+
+export interface UserStats {
+  executionStreak: number;
+  goalsInProgress: number;
+  totalGoalsCompleted: number;
+  peerValidated: number;
+}
+
+export const statsAPI = {
+  getMyStats: () => apiClient.get<UserStats>('/stats'),
+};

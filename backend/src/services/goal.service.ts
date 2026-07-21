@@ -4,7 +4,7 @@ import {
   createGoal,
   findGoalsByUser,
   addPenalizedDates,
-  markGoalFailed,
+  setGoalStatus,
   markSubtaskPenalized,
 } from "../repositories/goal.repository";
 import { incrementUserScore } from "../repositories/user.repository";
@@ -209,23 +209,41 @@ async function applyTaskDeadlinePenalties(
 ): Promise<void> {
   if (goal.status !== "in_progress") return;
 
-  const occurrences = getElapsedTaskOccurrences(goal);
-  if (occurrences.length === 0) return;
-
-  const alreadyPenalized = new Set((goal.penalizedDates ?? []).map((d) => toDateKey(d)));
-  const missed = occurrences.filter(
-    (occ) => !alreadyPenalized.has(toDateKey(occ)) && !submittedDates.has(toDateKey(occ)),
-  );
-  if (missed.length === 0) return;
-
   const isRecurring = goal.daysOfWeek.length > 0;
-  await incrementUserScore(userId, -DEADLINE_MISS_PENALTY * missed.length);
-  await addPenalizedDates(goal._id.toString(), missed);
-  goal.penalizedDates = [...(goal.penalizedDates ?? []), ...missed];
+  const occurrences = getElapsedTaskOccurrences(goal);
 
-  if (!isRecurring) {
-    await markGoalFailed(goal._id.toString());
-    goal.status = "failed";
+  if (occurrences.length > 0) {
+    const alreadyPenalized = new Set((goal.penalizedDates ?? []).map((d) => toDateKey(d)));
+    const missed = occurrences.filter(
+      (occ) => !alreadyPenalized.has(toDateKey(occ)) && !submittedDates.has(toDateKey(occ)),
+    );
+
+    if (missed.length > 0) {
+      await incrementUserScore(userId, -DEADLINE_MISS_PENALTY * missed.length);
+      await addPenalizedDates(goal._id.toString(), missed);
+      goal.penalizedDates = [...(goal.penalizedDates ?? []), ...missed];
+
+      if (!isRecurring) {
+        await setGoalStatus(goal._id.toString(), "failed");
+        goal.status = "failed";
+        return;
+      }
+    }
+  }
+
+  // A recurring task finalizes once its own window has fully elapsed: clean if it
+  // was never missed, otherwise failed (each miss was already penalized above).
+  if (isRecurring && goal.endDate && goal.status === "in_progress") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(goal.endDate);
+    endDate.setHours(0, 0, 0, 0);
+
+    if (endDate < today) {
+      const finalStatus = (goal.penalizedDates ?? []).length === 0 ? "completed" : "failed";
+      await setGoalStatus(goal._id.toString(), finalStatus);
+      goal.status = finalStatus;
+    }
   }
 }
 

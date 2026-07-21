@@ -1,5 +1,7 @@
 import { Evidence, Goal, User } from "../models";
+import { ITaskGoalDocument, IProjectGoalDocument } from "../models/Goal";
 import { incrementUserScore } from "../repositories/user.repository";
+import { setGoalStatus } from "../repositories/goal.repository";
 
 const POINTS_PER_SUBMISSION = 10;
 
@@ -54,6 +56,7 @@ export async function submitEvidence(input: SubmitEvidenceInput) {
   });
 
   await incrementUserScore(input.userId, POINTS_PER_SUBMISSION);
+  await maybeMarkGoalCompleted(goal, input);
 
   return {
     id: evidence._id.toString(),
@@ -63,6 +66,40 @@ export async function submitEvidence(input: SubmitEvidenceInput) {
     status: evidence.status,
     submittedAt: (evidence as unknown as { submittedAt: Date }).submittedAt.toISOString(),
   };
+}
+
+/**
+ * A one-off task completes as soon as its (only) evidence is submitted. A project
+ * completes once every subtask has non-failed evidence. Recurring tasks are never
+ * completed here — they only finalize once their own window elapses (see goal.service.ts).
+ */
+async function maybeMarkGoalCompleted(
+  goal: { _id: { toString(): string }; goalType: string; status: string },
+  input: SubmitEvidenceInput,
+): Promise<void> {
+  if (goal.status !== "in_progress") return;
+
+  if (input.subtaskId) {
+    const projectGoal = goal as unknown as IProjectGoalDocument;
+    const subtaskIds = projectGoal.subtasks.map((st) => st._id.toString());
+    const statuses = await getSubtaskEvidenceStatuses(input.userId, subtaskIds);
+    const allSubmitted = subtaskIds.every((id) => {
+      const status = statuses.get(id);
+      return status ? status !== "failed" : false;
+    });
+    if (allSubmitted) {
+      await setGoalStatus(goal._id.toString(), "completed");
+    }
+    return;
+  }
+
+  if (goal.goalType === "task") {
+    const taskGoal = goal as unknown as ITaskGoalDocument;
+    const isRecurring = (taskGoal.daysOfWeek?.length ?? 0) > 0;
+    if (!isRecurring) {
+      await setGoalStatus(goal._id.toString(), "completed");
+    }
+  }
 }
 
 export async function getSubtaskEvidenceStatuses(

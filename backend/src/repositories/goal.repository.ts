@@ -22,8 +22,11 @@ export async function addPenalizedDates(goalId: string, dates: Date[]): Promise<
   await Goal.updateOne({ _id: goalId }, { $push: { penalizedDates: { $each: dates } } }).exec();
 }
 
-export async function markGoalFailed(goalId: string): Promise<void> {
-  await Goal.updateOne({ _id: goalId }, { $set: { status: "failed" } }).exec();
+export async function setGoalStatus(
+  goalId: string,
+  status: "in_progress" | "completed" | "failed",
+): Promise<void> {
+  await Goal.updateOne({ _id: goalId }, { $set: { status } }).exec();
 }
 
 export async function markSubtaskPenalized(goalId: string, subtaskId: string): Promise<void> {
