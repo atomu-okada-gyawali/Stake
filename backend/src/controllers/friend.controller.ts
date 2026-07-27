@@ -8,6 +8,7 @@ import {
   getFriendRequests,
   searchUsers,
   getSuggestions,
+  getLeaderboard,
 } from "../services/friend.service";
 
 interface AuthenticatedRequest extends Request {
@@ -161,6 +162,24 @@ export async function suggestions(
     }
 
     const result = await getSuggestions(userId);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function leaderboard(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const result = await getLeaderboard(userId);
     res.status(200).json(result);
   } catch (error) {
     next(error);

@@ -5,45 +5,21 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistoryItem from "@/components/HistoryItem";
 import EditProfileModal from "@/components/EditProfileModal";
+import SubmitFailureReportModal from "@/components/SubmitFailureReportModal";
 import { toast } from "sonner";
-import { authAPI, goalsAPI, UserProfile } from "@/lib/services";
+import {
+  authAPI,
+  goalsAPI,
+  failuresAPI,
+  statsAPI,
+  UserProfile,
+  FailureHistoryItem,
+  UserStats,
+} from "@/lib/services";
 import { setAuth } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/apiClient";
 
 const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
-
-const stats = [
-  {
-    label: "EXECUTION STREAK",
-    value: "42 Days",
-    valueColor: "text-stake-accent",
-    bottom: <ProgressBar fill={85} />,
-  },
-  {
-    label: "GOALS IN PROGRESS",
-    value: "12",
-    valueColor: "text-white",
-    bottom: (
-      <span className="text-xs text-[#0A6D00] font-regular">+2 from last week</span>
-    ),
-  },
-  {
-    label: "TOTAL GOALS COMPLETED",
-    value: "89",
-    valueColor: "text-white",
-    bottom: (
-      <span className="text-xs text-stake-muted font-regular">Rank: Elite Tier</span>
-    ),
-  },
-  {
-    label: "PEER VALIDATED",
-    value: "315",
-    valueColor: "text-stake-dangerText",
-    bottom: (
-      <span className="text-xs text-[#531900] font-regular">Trusted by the Squad</span>
-    ),
-  },
-];
 
 interface Task {
   id: string;
@@ -53,21 +29,6 @@ interface Task {
   description: string | undefined;
   variant: "filled" | "outlined";
 }
-
-const historyItems = [
-  {
-    status: "VERIFIED" as const,
-    date: "APRIL 17, 2:00 PM",
-    title: "PHYSIOLOGY EXAM PREPARATION",
-    description: "Completed task paper 23 to 50 with deep focus.",
-  },
-  {
-    status: "FAILED" as const,
-    date: "APRIL 13, 5:00 PM",
-    title: "DAILY YOGA",
-    description: "Missed 45 min yoga session without distraction.",
-  },
-];
 
 function ProgressBar({ fill }: { fill: number }) {
   return (
@@ -86,6 +47,31 @@ export default function ProfilePage() {
   const [tasksLoading, setTasksLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [failureHistory, setFailureHistory] = useState<FailureHistoryItem[]>([]);
+  const [failureHistoryLoading, setFailureHistoryLoading] = useState(true);
+  const [reportingItem, setReportingItem] = useState<FailureHistoryItem | null>(null);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    statsAPI
+      .getMyStats()
+      .then(({ data }) => setStats(data))
+      .catch(() => toast.error("Failed to load your stats"))
+      .finally(() => setStatsLoading(false));
+  }, []);
+
+  const loadFailureHistory = () => {
+    failuresAPI
+      .list()
+      .then(({ data }) => setFailureHistory(data))
+      .catch(() => toast.error("Failed to load task failure history"))
+      .finally(() => setFailureHistoryLoading(false));
+  };
+
+  useEffect(() => {
+    loadFailureHistory();
+  }, []);
 
   useEffect(() => {
     authAPI
@@ -204,19 +190,54 @@ export default function ProfilePage() {
 
             <div className="bg-[#1C1B1B] border border-[#444933]">
               <div className="grid grid-cols-4 divide-x divide-[#242424]">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="px-5 py-5">
-                    <span className="text-xs font-bold text-stake-muted uppercase tracking-wider">
-                      {stat.label}
+                <div className="px-5 py-5">
+                  <span className="text-xs font-bold text-stake-muted uppercase tracking-wider">
+                    EXECUTION STREAK
+                  </span>
+                  <div className="mt-2">
+                    <span className="text-[32px] font-bold text-stake-accent">
+                      {statsLoading
+                        ? "…"
+                        : `${stats?.executionStreak ?? 0} Day${stats?.executionStreak === 1 ? "" : "s"}`}
                     </span>
-                    <div className="mt-2">
-                      <span className={`text-[32px] font-bold ${stat.valueColor}`}>
-                        {stat.value}
-                      </span>
-                    </div>
-                    <div className="mt-2">{stat.bottom}</div>
                   </div>
-                ))}
+                  <div className="mt-2">
+                    <ProgressBar fill={Math.min(100, ((stats?.executionStreak ?? 0) / 30) * 100)} />
+                  </div>
+                </div>
+
+                <div className="px-5 py-5">
+                  <span className="text-xs font-bold text-stake-muted uppercase tracking-wider">
+                    GOALS IN PROGRESS
+                  </span>
+                  <div className="mt-2">
+                    <span className="text-[32px] font-bold text-white">
+                      {statsLoading ? "…" : stats?.goalsInProgress ?? 0}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="px-5 py-5">
+                  <span className="text-xs font-bold text-stake-muted uppercase tracking-wider">
+                    TOTAL GOALS COMPLETED
+                  </span>
+                  <div className="mt-2">
+                    <span className="text-[32px] font-bold text-white">
+                      {statsLoading ? "…" : stats?.totalGoalsCompleted ?? 0}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="px-5 py-5">
+                  <span className="text-xs font-bold text-stake-muted uppercase tracking-wider">
+                    PEER VALIDATED
+                  </span>
+                  <div className="mt-2">
+                    <span className="text-[32px] font-bold text-stake-dangerText">
+                      {statsLoading ? "…" : stats?.peerValidated ?? 0}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -299,17 +320,35 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              <div className="divide-y divide-[#444933]/30">
-                {historyItems.map((item) => (
-                  <HistoryItem
-                    key={item.title}
-                    title={item.title}
-                    date={item.date}
-                    description={item.description}
-                    status={item.status}
-                  />
-                ))}
-              </div>
+              {failureHistoryLoading ? (
+                <div className="text-stake-muted/50 text-sm text-center py-8">
+                  Loading...
+                </div>
+              ) : failureHistory.length === 0 ? (
+                <div className="text-stake-muted/50 text-sm text-center py-8">
+                  No missed deadlines yet.
+                </div>
+              ) : (
+                <div className="divide-y divide-[#444933]/30">
+                  {failureHistory.map((item) => (
+                    <HistoryItem
+                      key={`${item.goalId}-${item.subtaskId ?? ""}-${item.occurrenceDate ?? item.date}`}
+                      title={item.title}
+                      date={new Date(item.date)
+                        .toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                        .toUpperCase()}
+                      description={item.description ?? "Deadline passed without evidence submitted."}
+                      status="FAILED"
+                      reportedReason={item.reason}
+                      onFailureReport={() => setReportingItem(item)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -323,6 +362,23 @@ export default function ProfilePage() {
           onSaved={handleProfileSaved}
         />
       )}
+
+      <SubmitFailureReportModal
+        open={!!reportingItem}
+        onClose={() => setReportingItem(null)}
+        item={reportingItem}
+        onSubmitted={(updated) => {
+          setFailureHistory((prev) =>
+            prev.map((f) =>
+              f.goalId === updated.goalId &&
+              f.subtaskId === updated.subtaskId &&
+              f.occurrenceDate === updated.occurrenceDate
+                ? updated
+                : f,
+            ),
+          );
+        }}
+      />
     </div>
   );
 }

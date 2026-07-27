@@ -72,6 +72,13 @@ export const evidenceAPI = {
     apiClient.get<FeedItem[]>("/evidence/feed"),
 };
 
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  score: number;
+  isCurrentUser: boolean;
+}
+
 export const friendsAPI = {
   sendRequest: (identifier: string) =>
     apiClient.post('/friends/request', { identifier }),
@@ -96,4 +103,40 @@ export const friendsAPI = {
 
   getSuggestions: () =>
     apiClient.get('/friends/suggestions'),
+
+  getLeaderboard: () =>
+    apiClient.get<LeaderboardEntry[]>('/friends/leaderboard'),
+};
+
+export interface FailureHistoryItem {
+  goalId: string;
+  subtaskId?: string;
+  occurrenceDate?: string;
+  title: string;
+  description?: string;
+  date: string;
+  reported: boolean;
+  reason?: string;
+}
+
+export const failuresAPI = {
+  list: () => apiClient.get<FailureHistoryItem[]>('/failures'),
+
+  submitReport: (data: {
+    goalId: string;
+    subtaskId?: string;
+    occurrenceDate?: string;
+    reason: string;
+  }) => apiClient.post('/failures', data),
+};
+
+export interface UserStats {
+  executionStreak: number;
+  goalsInProgress: number;
+  totalGoalsCompleted: number;
+  peerValidated: number;
+}
+
+export const statsAPI = {
+  getMyStats: () => apiClient.get<UserStats>('/stats'),
 };

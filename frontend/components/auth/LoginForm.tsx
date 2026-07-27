@@ -35,7 +35,8 @@ export default function LoginForm({ onToggleMode }: LoginFormProps) {
 
       router.push("/circle-feed");
     } catch (err: any) {
-      const message = err.response?.data?.message || "Login failed. Please try again.";
+      const message =
+        err.response?.data?.message || "Login failed. Please try again.";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -69,7 +70,7 @@ export default function LoginForm({ onToggleMode }: LoginFormProps) {
 
       <div className="pt-6 border-t border-[#444933] space-y-6">
         <div className="flex items-center justify-center gap-3">
-          <span className="text-stake-muted text-base">New to the squad?</span>
+          <span className="text-stake-muted text-base">No account?</span>
           <Button variant="outline-lime" type="button" onClick={onToggleMode}>
             Register
           </Button>

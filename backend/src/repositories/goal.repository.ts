@@ -17,3 +17,21 @@ export async function createGoal(data: Record<string, unknown>): Promise<IGoalDo
 export async function findGoalsByUser(userId: string): Promise<IGoalDocument[]> {
   return Goal.find({ creatorId: userId }).sort({ createdAt: -1 }).exec();
 }
+
+export async function addPenalizedDates(goalId: string, dates: Date[]): Promise<void> {
+  await Goal.updateOne({ _id: goalId }, { $push: { penalizedDates: { $each: dates } } }).exec();
+}
+
+export async function setGoalStatus(
+  goalId: string,
+  status: "in_progress" | "completed" | "failed",
+): Promise<void> {
+  await Goal.updateOne({ _id: goalId }, { $set: { status } }).exec();
+}
+
+export async function markSubtaskPenalized(goalId: string, subtaskId: string): Promise<void> {
+  await Goal.updateOne(
+    { _id: goalId, "subtasks._id": subtaskId },
+    { $set: { "subtasks.$.deadlinePenaltyApplied": true } },
+  ).exec();
+}

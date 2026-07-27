@@ -8,6 +8,7 @@ interface HistoryItemProps {
   description: string;
   status: HistoryStatus;
   onFailureReport?: () => void;
+  reportedReason?: string;
 }
 
 const HistoryItem: React.FC<HistoryItemProps> = ({
@@ -16,6 +17,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   description,
   status,
   onFailureReport,
+  reportedReason,
 }) => {
   const isSuccess = status === "VERIFIED";
 
@@ -61,12 +63,19 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
           {description}
         </p>
         {!isSuccess && (
-          <button
-            onClick={onFailureReport}
-            className="mt-3 text-stake-dangerText text-[10px] font-bold uppercase hover:opacity-80 transition-opacity"
-          >
-            Submit Failure report
-          </button>
+          <>
+            {reportedReason && (
+              <p className="mt-2 text-stake-muted/70 text-xs italic">
+                &ldquo;{reportedReason}&rdquo;
+              </p>
+            )}
+            <button
+              onClick={onFailureReport}
+              className="mt-3 text-stake-dangerText text-[10px] font-bold uppercase hover:opacity-80 transition-opacity"
+            >
+              {reportedReason ? "Edit Failure Report" : "Submit Failure Report"}
+            </button>
+          </>
         )}
       </div>
     </div>

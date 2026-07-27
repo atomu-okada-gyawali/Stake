@@ -9,6 +9,7 @@ export interface IUser {
   email: string;
   password: string;
   avatarUrl?: string;
+  score: number;
   friends: Types.ObjectId[];
   createdAt: Date;
 }
@@ -45,6 +46,10 @@ const UserSchema = new Schema<IUserDocument>(
     avatarUrl: {
       type: String,
       trim: true,
+    },
+    score: {
+      type: Number,
+      default: 0,
     },
     friends: [
       {

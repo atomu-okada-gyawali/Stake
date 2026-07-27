@@ -225,6 +225,25 @@ export async function searchUsers(query: string, currentUserId: string) {
   }));
 }
 
+export async function getLeaderboard(currentUserId: string) {
+  const currentUser = await User.findById(currentUserId).select("friends");
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  const ids = [currentUserId, ...currentUser.friends.map((f) => f.toString())];
+  const users = await User.find({ _id: { $in: ids } }).select("username score");
+
+  return users
+    .map((u) => ({
+      id: u._id.toString(),
+      username: u.username,
+      score: u.score ?? 0,
+      isCurrentUser: u._id.toString() === currentUserId,
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
 export async function getSuggestions(currentUserId: string) {
   const currentUser = await User.findById(currentUserId).select("friends");
   if (!currentUser) {

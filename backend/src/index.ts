@@ -15,6 +15,8 @@ import authRouter from "./routes/auth.routes";
 import goalRouter from "./routes/goal.routes";
 import friendRouter from "./routes/friend.routes";
 import evidenceRouter from "./routes/evidence.routes";
+import failureReportRouter from "./routes/failureReport.routes";
+import statsRouter from "./routes/stats.routes";
 
 const app = express();
 const PORT = process.env.PORT ?? "4000";
@@ -26,6 +28,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/goals", goalRouter);
 app.use("/api/friends", friendRouter);
 app.use("/api/evidence", evidenceRouter);
+app.use("/api/failures", failureReportRouter);
+app.use("/api/stats", statsRouter);
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
