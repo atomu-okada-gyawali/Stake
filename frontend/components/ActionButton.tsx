@@ -44,43 +44,4 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-// Example arrangement blueprint tracking standard layout placements
-export const SampleButtonContainer: React.FC = () => {
-  return (
-    <div className="p-8 bg-stake-bg border border-white/10 rounded-lg flex flex-col md:flex-row items-center gap-6">
-      {/* 1. Main interaction type */}
-      <Button variant="outline-lime" onClick={() => alert('Browsing actions...')}>
-        Browse Files
-      </Button>
-
-      {/* 2. Secondary route link type */}
-      <Button variant="link" onClick={() => alert('Navigating to profile...')}>
-        Profile
-      </Button>
-
-      {/* 3. Safe system exit boundary link type */}
-      <Button variant="danger-link" onClick={() => alert('Terminating session...')}>
-        Log Out
-      </Button>
-
-      {/* 4. Modular generic trailing system vector option */}
-      <Button variant="icon" aria-label="Settings Utility Button">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      </Button>
-    </div>
-  );
-};
-
 export default Button;
