@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { friendsAPI } from "@/lib/services";
+import { API_BASE_URL } from "@/lib/apiClient";
+
+const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
 
 interface SquadRequestsModalProps {
   open: boolean;
@@ -15,6 +18,7 @@ interface IncomingRequest {
     id: string;
     username: string;
     email: string;
+    avatarUrl?: string;
   };
   createdAt: string;
 }
@@ -64,7 +68,7 @@ export default function SquadRequestsModal({ open, onClose }: SquadRequestsModal
         <div className="mx-2 mt-2 border-b border-white/10">
           <div className="flex items-center justify-between px-6 py-6">
             <h2 className="text-stake-textLight text-2xl font-bold">
-              Squad Requests
+              Friend Requests
             </h2>
             <button onClick={onClose} className="text-stake-muted">
               <svg
@@ -120,10 +124,18 @@ export default function SquadRequestsModal({ open, onClose }: SquadRequestsModal
                   className="flex items-center px-4 h-[88px]"
                 >
                   {/* Avatar */}
-                  <div className="w-14 h-14 bg-[#353534] border border-white/10 flex items-center justify-center shrink-0">
-                    <span className="text-stake-muted text-lg font-bold">
-                      {req.sender.username.charAt(0).toUpperCase()}
-                    </span>
+                  <div className="w-14 h-14 bg-[#353534] border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                    {req.sender.avatarUrl ? (
+                      <img
+                        src={`${uploadsBase}${req.sender.avatarUrl}`}
+                        alt={`${req.sender.username}'s avatar`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-stake-muted text-lg font-bold">
+                        {req.sender.username.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Name */}

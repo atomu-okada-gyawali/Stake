@@ -110,8 +110,8 @@ const Header = () => {
           onClick={() => router.push("/circle-feed")}
           aria-label={
             pendingRequestCount > 0
-              ? `${pendingRequestCount} pending squad request${pendingRequestCount !== 1 ? "s" : ""}`
-              : "Squad requests"
+              ? `${pendingRequestCount} pending friend request${pendingRequestCount !== 1 ? "s" : ""}`
+              : "Friend requests"
           }
           className="relative text-stake-muted hover:text-stake-accent transition-colors"
         >

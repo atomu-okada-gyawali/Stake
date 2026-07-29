@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HistoryItem from "@/components/HistoryItem";
 import EditProfileModal from "@/components/EditProfileModal";
-import SubmitFailureReportModal from "@/components/SubmitFailureReportModal";
 import { toast } from "sonner";
 import {
   authAPI,
@@ -66,7 +65,6 @@ export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [failureHistory, setFailureHistory] = useState<FailureHistoryItem[]>([]);
   const [failureHistoryLoading, setFailureHistoryLoading] = useState(true);
-  const [reportingItem, setReportingItem] = useState<FailureHistoryItem | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -367,7 +365,12 @@ export default function ProfilePage() {
                       description: item.description ?? "Deadline passed without evidence submitted.",
                       status: "FAILED",
                       reportedReason: item.reason,
-                      onReport: () => setReportingItem(item),
+                      onReport: () => {
+                        const params = new URLSearchParams({ goalId: item.goalId });
+                        if (item.subtaskId) params.set("subtaskId", item.subtaskId);
+                        if (item.occurrenceDate) params.set("occurrenceDate", item.occurrenceDate);
+                        router.push(`/submit-failure-report?${params.toString()}`);
+                      },
                     })),
                   ]
                     .sort((a, b) => b.sortTime - a.sortTime)
@@ -397,23 +400,6 @@ export default function ProfilePage() {
           onSaved={handleProfileSaved}
         />
       )}
-
-      <SubmitFailureReportModal
-        open={!!reportingItem}
-        onClose={() => setReportingItem(null)}
-        item={reportingItem}
-        onSubmitted={(updated) => {
-          setFailureHistory((prev) =>
-            prev.map((f) =>
-              f.goalId === updated.goalId &&
-              f.subtaskId === updated.subtaskId &&
-              f.occurrenceDate === updated.occurrenceDate
-                ? updated
-                : f,
-            ),
-          );
-        }}
-      />
     </div>
   );
 }

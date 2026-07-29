@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
-import { createEvidence, getFeedHandler } from "../controllers/evidence.controller";
+import { createEvidence, getFeedHandler, verifyEvidenceHandler } from "../controllers/evidence.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 
 const storage = multer.diskStorage({
@@ -33,6 +33,7 @@ const router = Router();
 
 router.post(["", "/"], requireAuth, upload.single("proof"), createEvidence);
 router.get("/feed", requireAuth, getFeedHandler);
+router.patch("/:id/verify", requireAuth, verifyEvidenceHandler);
 
 // Fallback — log unmatched evidence routes
 router.use((req, _res, next) => {

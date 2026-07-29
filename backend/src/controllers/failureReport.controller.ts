@@ -48,12 +48,15 @@ export async function createFailureReport(
       return res.status(400).json({ message: "goalId is required" });
     }
 
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+
     const result = await submitFailureReport({
       userId,
       goalId,
       subtaskId,
       occurrenceDate,
       reason: reason ?? "",
+      photoUrl,
     });
     res.status(201).json(result);
   } catch (error) {

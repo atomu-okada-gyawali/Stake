@@ -16,7 +16,10 @@ interface Friend {
   id: string;
   username: string;
   email: string;
+  avatarUrl?: string;
 }
+
+const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
 
 export default function CircleFeedPage() {
   const router = useRouter();
@@ -28,6 +31,7 @@ export default function CircleFeedPage() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadFriends() {
@@ -70,6 +74,27 @@ export default function CircleFeedPage() {
     }
     loadFeed();
   }, []);
+
+  const handleVerify = async (evidenceId: string) => {
+    setVerifyingId(evidenceId);
+    try {
+      const { data } = await evidenceAPI.verify(evidenceId, true);
+      setFeedItems((prev) =>
+        prev.map((item) =>
+          item.id === evidenceId ? { ...item, status: data.status, canVerify: false } : item,
+        ),
+      );
+      toast.success("Submission verified!");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Object && "response" in err
+          ? (err as { response: { data: { message: string } } }).response?.data?.message
+          : "Failed to verify submission";
+      toast.error(message ?? "Failed to verify submission");
+    } finally {
+      setVerifyingId(null);
+    }
+  };
 
   const ordinal = (n: number) => {
     const suffixes = ["th", "st", "nd", "rd"];
@@ -121,7 +146,6 @@ export default function CircleFeedPage() {
               ) : (
                 <div className="space-y-6">
                   {feedItems.map((item) => {
-                    const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
                     const proofUrl = item.proofData
                       ? `${uploadsBase}${item.proofData}`
                       : undefined;
@@ -130,11 +154,21 @@ export default function CircleFeedPage() {
                       <FeedCard
                         key={item.id}
                         userName={item.userName}
+                        userAvatarUrl={
+                          item.userAvatarUrl
+                            ? `${uploadsBase}${item.userAvatarUrl}`
+                            : undefined
+                        }
                         timestamp={formatTimestamp(item.timestamp)}
                         goalTitle={item.goalTitle}
                         description={item.description ?? "Submitted proof for this goal."}
                         proofUrl={proofUrl}
                         proofType={isVideo ? "video" : "image"}
+                        status={item.status}
+                        kind={item.type}
+                        canVerify={item.canVerify}
+                        isVerifying={verifyingId === item.id}
+                        onVerify={() => handleVerify(item.id)}
                       />
                     );
                   })}
@@ -143,7 +177,7 @@ export default function CircleFeedPage() {
             </section>
 
             {/* Right Column - Sidebars */}
-            <aside className="w-[434px] shrink-0 space-y-6">
+            <aside className="w-[434px] shrink-0 space-y-6 self-start sticky top-[97px] max-h-[calc(100vh-97px)] overflow-y-auto">
               {/* My Circle Section */}
               <section className="bg-[#1C1B1B] border border-[#2D2D2D]">
                 <div className="p-6">
@@ -190,18 +224,26 @@ export default function CircleFeedPage() {
                     <div className="space-y-4">
                       {myFriends.map((friend) => (
                         <div key={friend.id} className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-[#2D2D2D] flex items-center justify-center">
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 16 16"
-                              fill="none"
-                              stroke="#6B7280"
-                              strokeWidth="1.5"
-                            >
-                              <circle cx="8" cy="5" r="3" />
-                              <path d="M2 15c0-4 2.7-6 6-6s6 2 6 6" />
-                            </svg>
+                          <div className="w-8 h-8 bg-[#2D2D2D] flex items-center justify-center overflow-hidden">
+                            {friend.avatarUrl ? (
+                              <img
+                                src={`${uploadsBase}${friend.avatarUrl}`}
+                                alt={`${friend.username}'s avatar`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#6B7280"
+                                strokeWidth="1.5"
+                              >
+                                <circle cx="8" cy="5" r="3" />
+                                <path d="M2 15c0-4 2.7-6 6-6s6 2 6 6" />
+                              </svg>
+                            )}
                           </div>
                           <span className="text-sm font-bold text-[#A1A1AA]">
                             {friend.username}
@@ -218,22 +260,7 @@ export default function CircleFeedPage() {
               {/* Leaderboard Section */}
               <section className="bg-[#0A0A0A] border border-stake-accent/20 shadow-[0_0_20px_rgba(187,244,0,0.05)]">
                 <div className="p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      stroke="#ABD600"
-                      strokeWidth="1.5"
-                    >
-                      <path d="M3 17V7l3-4 3 4v10" />
-                      <path d="M14 17V4l3-1 3 1v13" />
-                      <path d="M3 17h14" />
-                      <path d="M7 12v-2" />
-                      <path d="M11 12v-4" />
-                      <path d="M17 12V8" />
-                    </svg>
+                  <div className="flex items-center mb-6">
                     <h2 className="text-stake-accent text-lg font-extrabold">
                       CIRCLE LEADER BOARD
                     </h2>
@@ -270,6 +297,13 @@ export default function CircleFeedPage() {
                             >
                               {ordinal(rank)}
                             </span>
+                            {entry.avatarUrl && (
+                              <img
+                                src={`${uploadsBase}${entry.avatarUrl}`}
+                                alt={`${entry.username}'s avatar`}
+                                className="w-8 h-8 object-cover mr-3 border border-white/10"
+                              />
+                            )}
                             <div className="flex-1">
                               <span
                                 className={`text-base font-extrabold ${

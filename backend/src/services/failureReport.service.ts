@@ -83,6 +83,7 @@ export interface SubmitFailureReportInput {
   subtaskId?: string;
   occurrenceDate?: string;
   reason: string;
+  photoUrl?: string;
 }
 
 export async function submitFailureReport(input: SubmitFailureReportInput) {
@@ -132,6 +133,7 @@ export async function submitFailureReport(input: SubmitFailureReportInput) {
     subtaskId: input.subtaskId,
     occurrenceDate,
     reason: input.reason.trim(),
+    photoUrl: input.photoUrl,
   });
 
   return {
@@ -140,6 +142,7 @@ export async function submitFailureReport(input: SubmitFailureReportInput) {
     subtaskId: report.subtaskId?.toString(),
     occurrenceDate: report.occurrenceDate?.toISOString(),
     reason: report.reason,
+    photoUrl: report.photoUrl,
     createdAt: report.createdAt.toISOString(),
   };
 }

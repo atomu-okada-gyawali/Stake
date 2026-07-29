@@ -6,6 +6,7 @@ export interface IFailureReport {
   occurrenceDate?: Date;
   userId: Types.ObjectId;
   reason: string;
+  photoUrl?: string;
   createdAt: Date;
 }
 
@@ -39,6 +40,10 @@ const FailureReportSchema = new Schema<IFailureReportDocument>(
       required: [true, "A reason is required"],
       trim: true,
       maxlength: 1000,
+    },
+    photoUrl: {
+      type: String,
+      trim: true,
     },
   },
   {

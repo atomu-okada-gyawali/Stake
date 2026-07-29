@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { friendsAPI } from "@/lib/services";
+import { API_BASE_URL } from "@/lib/apiClient";
+
+const uploadsBase = API_BASE_URL.replace(/\/api$/, "");
 
 interface AddFriendsModalProps {
   open: boolean;
@@ -13,6 +16,7 @@ interface UserResult {
   id: string;
   username: string;
   email: string;
+  avatarUrl?: string;
   isFriend?: boolean;
   hasPendingRequest?: boolean;
 }
@@ -106,7 +110,7 @@ export default function AddFriendsModal({ open, onClose }: AddFriendsModalProps)
         {/* Header */}
         <div className="px-6 pt-12 pb-4">
           <h1 className="text-white text-2xl font-bold">
-            EXPAND YOUR SQUAD
+            EXPAND YOUR CIRCLE
           </h1>
           <p className="text-stake-muted text-sm mt-2 leading-relaxed">
             Add friends to witness your progress and maintain high-stakes
@@ -167,27 +171,35 @@ export default function AddFriendsModal({ open, onClose }: AddFriendsModalProps)
           )}
 
           {!loading && displayItems.length > 0 && (
-            <div>
+            <div className="max-h-80 overflow-y-auto">
               {displayItems.map((user) => (
                 <div
                   key={user.id}
                   className="flex items-center justify-between bg-stake-card border-b border-[#444933]/20 px-[13px] h-[66px]"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#353534] border border-[#444933] flex items-center justify-center">
-                      <svg
-                        className="w-4 h-4 text-stake-muted"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    <div className="w-10 h-10 bg-[#353534] border border-[#444933] flex items-center justify-center overflow-hidden">
+                      {user.avatarUrl ? (
+                        <img
+                          src={`${uploadsBase}${user.avatarUrl}`}
+                          alt={`${user.username}'s avatar`}
+                          className="w-full h-full object-cover"
                         />
-                      </svg>
+                      ) : (
+                        <svg
+                          className="w-4 h-4 text-stake-muted"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                      )}
                     </div>
                     <div>
                       <span className="text-white text-sm font-bold block">

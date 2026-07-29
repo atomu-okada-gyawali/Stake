@@ -12,6 +12,7 @@ export async function upsertFailureReport(data: {
   subtaskId?: string;
   occurrenceDate?: Date;
   reason: string;
+  photoUrl?: string;
 }): Promise<IFailureReportDocument> {
   const filter: Record<string, unknown> = {
     userId: data.userId,
@@ -20,15 +21,21 @@ export async function upsertFailureReport(data: {
     occurrenceDate: data.occurrenceDate ?? { $exists: false },
   };
 
+  const update: Record<string, unknown> = {
+    userId: data.userId,
+    goalId: data.goalId,
+    subtaskId: data.subtaskId,
+    occurrenceDate: data.occurrenceDate,
+    reason: data.reason,
+  };
+  // Keep the existing photo when the report is edited without re-uploading one.
+  if (data.photoUrl) {
+    update.photoUrl = data.photoUrl;
+  }
+
   const result = await FailureReport.findOneAndUpdate(
     filter,
-    {
-      userId: data.userId,
-      goalId: data.goalId,
-      subtaskId: data.subtaskId,
-      occurrenceDate: data.occurrenceDate,
-      reason: data.reason,
-    },
+    update,
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).exec();
 

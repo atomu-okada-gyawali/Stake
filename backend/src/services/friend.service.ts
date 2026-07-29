@@ -132,7 +132,7 @@ export async function cancelFriendRequest(userId: string, requestId: string) {
 }
 
 export async function getFriends(userId: string) {
-  const user = await User.findById(userId).populate("friends", "username email createdAt");
+  const user = await User.findById(userId).populate("friends", "username email avatarUrl createdAt");
   if (!user) {
     throw new Error("User not found");
   }
@@ -141,17 +141,18 @@ export async function getFriends(userId: string) {
     id: f._id.toString(),
     username: (f as unknown as { username: string }).username,
     email: (f as unknown as { email: string }).email,
+    avatarUrl: (f as unknown as { avatarUrl?: string }).avatarUrl,
     createdAt: (f as unknown as { createdAt: Date }).createdAt?.toISOString(),
   }));
 }
 
 export async function getFriendRequests(userId: string) {
   const received = await FriendRequest.find({ receiver: userId, status: "pending" })
-    .populate("sender", "username email")
+    .populate("sender", "username email avatarUrl")
     .sort({ createdAt: -1 });
 
   const sent = await FriendRequest.find({ sender: userId, status: "pending" })
-    .populate("receiver", "username email")
+    .populate("receiver", "username email avatarUrl")
     .sort({ createdAt: -1 });
 
   return {
@@ -161,6 +162,7 @@ export async function getFriendRequests(userId: string) {
         id: (r.sender as unknown as { _id: { toString(): string }; username: string; email: string })._id.toString(),
         username: (r.sender as unknown as { username: string }).username,
         email: (r.sender as unknown as { email: string }).email,
+        avatarUrl: (r.sender as unknown as { avatarUrl?: string }).avatarUrl,
       },
       status: r.status,
       createdAt: r.createdAt.toISOString(),
@@ -171,6 +173,7 @@ export async function getFriendRequests(userId: string) {
         id: (r.receiver as unknown as { _id: { toString(): string }; username: string; email: string })._id.toString(),
         username: (r.receiver as unknown as { username: string }).username,
         email: (r.receiver as unknown as { email: string }).email,
+        avatarUrl: (r.receiver as unknown as { avatarUrl?: string }).avatarUrl,
       },
       status: r.status,
       createdAt: r.createdAt.toISOString(),
@@ -195,7 +198,7 @@ export async function searchUsers(query: string, currentUserId: string) {
       },
     ],
   })
-    .select("username email")
+    .select("username email avatarUrl")
     .limit(20);
 
   const currentUser = await User.findById(currentUserId).select("friends");
@@ -220,6 +223,7 @@ export async function searchUsers(query: string, currentUserId: string) {
     id: u._id.toString(),
     username: u.username,
     email: u.email,
+    avatarUrl: u.avatarUrl,
     isFriend: friendIds.includes(u._id.toString()),
     hasPendingRequest: pendingIds.includes(u._id.toString()),
   }));
@@ -232,13 +236,14 @@ export async function getLeaderboard(currentUserId: string) {
   }
 
   const ids = [currentUserId, ...currentUser.friends.map((f) => f.toString())];
-  const users = await User.find({ _id: { $in: ids } }).select("username score");
+  const users = await User.find({ _id: { $in: ids } }).select("username score avatarUrl");
 
   return users
     .map((u) => ({
       id: u._id.toString(),
       username: u.username,
       score: u.score ?? 0,
+      avatarUrl: u.avatarUrl,
       isCurrentUser: u._id.toString() === currentUserId,
     }))
     .sort((a, b) => b.score - a.score);
@@ -269,12 +274,13 @@ export async function getSuggestions(currentUserId: string) {
   const suggestions = await User.find({
     _id: { $nin: excludeIds },
   })
-    .select("username email")
+    .select("username email avatarUrl")
     .limit(10);
 
   return suggestions.map((u) => ({
     id: u._id.toString(),
     username: u.username,
     email: u.email,
+    avatarUrl: u.avatarUrl,
   }));
 }

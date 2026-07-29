@@ -1,9 +1,12 @@
+import { Types } from "mongoose";
 import { Evidence, Goal, User } from "../models";
+import { FailureReport } from "../models/FailureReport";
 import { ITaskGoalDocument, IProjectGoalDocument } from "../models/Goal";
 import { incrementUserScore } from "../repositories/user.repository";
 import { setGoalStatus } from "../repositories/goal.repository";
 
 const POINTS_PER_SUBMISSION = 10;
+const POINTS_PER_VERIFICATION = 5;
 
 export interface SubmitEvidenceInput {
   goalId: string;
@@ -17,12 +20,15 @@ export interface FeedItem {
   id: string;
   userName: string;
   userId: string;
+  userAvatarUrl?: string;
   goalTitle: string;
   goalId: string;
   description: string | undefined;
   proofData: string;
   status: "pending" | "verified" | "failed";
   timestamp: string;
+  canVerify: boolean;
+  type: "proof" | "failure";
 }
 
 export async function submitEvidence(input: SubmitEvidenceInput) {
@@ -209,35 +215,140 @@ export async function getFeed(userId: string): Promise<FeedItem[]> {
   const visibleIds = [...friendIds, userId];
 
   const evidenceItems = await Evidence.find({})
-    .populate({ path: "goalId", select: "title creatorId" })
-    .populate({ path: "userId", select: "username" })
+    .populate({ path: "goalId", select: "title creatorId stakeholders" })
+    .populate({ path: "userId", select: "username avatarUrl" })
     .sort({ submittedAt: -1 })
     .limit(50);
 
   const feedItems: FeedItem[] = [];
 
   for (const item of evidenceItems) {
-    const goal = item.goalId as unknown as { _id: { toString(): string }; title: string; creatorId: { toString(): string } };
+    const goal = item.goalId as unknown as {
+      _id: { toString(): string };
+      title: string;
+      creatorId: { toString(): string };
+      stakeholders: { toString(): string }[];
+    };
     const creatorId = goal.creatorId.toString();
 
     if (!visibleIds.includes(creatorId)) {
       continue;
     }
 
-    const evidenceUser = item.userId as unknown as { _id: { toString(): string }; username: string };
+    const evidenceUser = item.userId as unknown as { _id: { toString(): string }; username: string; avatarUrl?: string };
+    const isDesignatedVerifier = (goal.stakeholders ?? []).some((s) => s.toString() === userId);
+    const isOwnSubmission = evidenceUser._id.toString() === userId;
 
     feedItems.push({
       id: item._id.toString(),
       userName: evidenceUser.username,
       userId: evidenceUser._id.toString(),
+      userAvatarUrl: evidenceUser.avatarUrl,
       goalTitle: goal.title,
       goalId: goal._id.toString(),
       description: undefined,
       proofData: item.proofData,
       status: item.status as "pending" | "verified" | "failed",
       timestamp: (item as unknown as { submittedAt: Date }).submittedAt.toISOString(),
+      canVerify: item.status === "pending" && isDesignatedVerifier && !isOwnSubmission,
+      type: "proof",
     });
   }
 
-  return feedItems;
+  const failureReports = await FailureReport.find({})
+    .populate({ path: "goalId", select: "title creatorId" })
+    .populate({ path: "userId", select: "username avatarUrl" })
+    .sort({ createdAt: -1 })
+    .limit(50);
+
+  for (const report of failureReports) {
+    const goal = report.goalId as unknown as {
+      _id: { toString(): string };
+      title: string;
+      creatorId: { toString(): string };
+    };
+
+    if (!visibleIds.includes(goal.creatorId.toString())) {
+      continue;
+    }
+
+    const reportUser = report.userId as unknown as {
+      _id: { toString(): string };
+      username: string;
+      avatarUrl?: string;
+    };
+
+    feedItems.push({
+      id: report._id.toString(),
+      userName: reportUser.username,
+      userId: reportUser._id.toString(),
+      userAvatarUrl: reportUser.avatarUrl,
+      goalTitle: goal.title,
+      goalId: goal._id.toString(),
+      description: report.reason,
+      proofData: report.photoUrl ?? "",
+      status: "failed",
+      timestamp: report.createdAt.toISOString(),
+      canVerify: false,
+      type: "failure",
+    });
+  }
+
+  feedItems.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
+
+  return feedItems.slice(0, 50);
+}
+
+export interface VerifyEvidenceInput {
+  evidenceId: string;
+  verifierId: string;
+  approved: boolean;
+  comment?: string;
+}
+
+export async function verifyEvidence(input: VerifyEvidenceInput) {
+  const evidence = await Evidence.findById(input.evidenceId);
+  if (!evidence) {
+    throw new Error("Evidence not found");
+  }
+
+  if (evidence.status !== "pending") {
+    throw new Error("This submission has already been reviewed");
+  }
+
+  if (evidence.userId.toString() === input.verifierId) {
+    throw new Error("You can't verify your own submission");
+  }
+
+  const goal = await Goal.findById(evidence.goalId).select("stakeholders");
+  if (!goal) {
+    throw new Error("Goal not found");
+  }
+
+  const isDesignatedVerifier = goal.stakeholders.some(
+    (s) => s.toString() === input.verifierId,
+  );
+  if (!isDesignatedVerifier) {
+    throw new Error("Only the designated verifier for this goal can verify this submission");
+  }
+
+  evidence.status = input.approved ? "verified" : "failed";
+  evidence.verifications.push({
+    verifierId: new Types.ObjectId(input.verifierId),
+    approved: input.approved,
+    comment: input.comment,
+    verifiedAt: new Date(),
+  });
+  await evidence.save();
+
+  if (input.approved) {
+    await incrementUserScore(evidence.userId.toString(), POINTS_PER_VERIFICATION);
+  }
+
+  return {
+    id: evidence._id.toString(),
+    status: evidence.status,
+  };
 }

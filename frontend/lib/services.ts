@@ -51,12 +51,15 @@ export interface FeedItem {
   id: string;
   userName: string;
   userId: string;
+  userAvatarUrl?: string;
   goalTitle: string;
   goalId: string;
   description?: string;
   proofData: string;
   status: "pending" | "verified" | "failed";
   timestamp: string;
+  canVerify: boolean;
+  type: "proof" | "failure";
 }
 
 export const evidenceAPI = {
@@ -70,12 +73,19 @@ export const evidenceAPI = {
 
   getFeed: () =>
     apiClient.get<FeedItem[]>("/evidence/feed"),
+
+  verify: (evidenceId: string, approved: boolean, comment?: string) =>
+    apiClient.patch<{ id: string; status: "pending" | "verified" | "failed" }>(
+      `/evidence/${evidenceId}/verify`,
+      { approved, comment },
+    ),
 };
 
 export interface LeaderboardEntry {
   id: string;
   username: string;
   score: number;
+  avatarUrl?: string;
   isCurrentUser: boolean;
 }
 
@@ -127,7 +137,16 @@ export const failuresAPI = {
     subtaskId?: string;
     occurrenceDate?: string;
     reason: string;
-  }) => apiClient.post('/failures', data),
+    photo?: File;
+  }) => {
+    const formData = new FormData();
+    formData.append("goalId", data.goalId);
+    if (data.subtaskId) formData.append("subtaskId", data.subtaskId);
+    if (data.occurrenceDate) formData.append("occurrenceDate", data.occurrenceDate);
+    formData.append("reason", data.reason);
+    if (data.photo) formData.append("photo", data.photo);
+    return apiClient.post('/failures', formData);
+  },
 };
 
 export interface UserStats {

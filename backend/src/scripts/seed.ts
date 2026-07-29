@@ -59,7 +59,18 @@ async function submitEvidenceAt(
   return doc;
 }
 
-const PLACEHOLDER_IMAGE = "/uploads/seed-proof.png";
+// Real photos stored in backend/uploads, each assigned to a goal whose title
+// actually matches what the photo shows.
+const PHOTO = {
+  proposalDesk: "/uploads/seed-proof-1.jpg", // laptop + wireframe notebook
+  canoe: "/uploads/seed-proof-2.jpg", // paddling on a lake
+  waterfall: "/uploads/seed-proof-3.jpg", // hiker at a waterfall
+  coast: "/uploads/seed-proof-4.jpg", // coastal cliff trail
+  pug: "/uploads/seed-proof-5.jpg", // pet portrait: pug in a blanket
+  lioness: "/uploads/seed-proof-6.jpg", // wildlife portrait: lioness
+  iphone: "/uploads/seed-proof-7.jpg", // phone on a table
+  studyDesk: "/uploads/seed-proof-8.jpg", // books + notes on a desk
+};
 
 async function main() {
   await connectDatabase(process.env.MONGO_URI ?? "");
@@ -92,12 +103,12 @@ async function main() {
   // --- Users ---------------------------------------------------------------
   const passwordHash = await hashPassword(SEED_PASSWORD);
   const userInputs = [
-    { fullName: "Alex Rivera", username: "alexr", email: "alex@stakedemo.dev" },
-    { fullName: "Jordan Blake", username: "jblake", email: "jordan@stakedemo.dev" },
-    { fullName: "Sam Okafor", username: "sokafor", email: "sam@stakedemo.dev" },
-    { fullName: "Priya Nair", username: "priyan", email: "priya@stakedemo.dev" },
-    { fullName: "Marcus Chen", username: "mchen", email: "marcus@stakedemo.dev" },
-    { fullName: "Taylor Brooks", username: "tbrooks", email: "taylor@stakedemo.dev" },
+    { fullName: "Alex Rivera", username: "alexr", email: "alex@stakedemo.dev", avatarUrl: "/uploads/seed-avatar-alexr.jpg" },
+    { fullName: "Jordan Blake", username: "jblake", email: "jordan@stakedemo.dev", avatarUrl: "/uploads/seed-avatar-jblake.jpg" },
+    { fullName: "Sam Okafor", username: "sokafor", email: "sam@stakedemo.dev", avatarUrl: "/uploads/seed-avatar-sokafor.jpg" },
+    { fullName: "Priya Nair", username: "priyan", email: "priya@stakedemo.dev", avatarUrl: "/uploads/seed-avatar-priyan.jpg" },
+    { fullName: "Marcus Chen", username: "mchen", email: "marcus@stakedemo.dev", avatarUrl: "/uploads/seed-avatar-mchen.jpg" },
+    { fullName: "Taylor Brooks", username: "tbrooks", email: "taylor@stakedemo.dev", avatarUrl: "/uploads/seed-avatar-tbrooks.jpg" },
   ];
 
   const created: Record<string, IUserDocument> = {};
@@ -143,9 +154,9 @@ async function main() {
     endDate: daysAgo(6),
     status: "completed",
     daysOfWeek: [],
-    stakeholders: [],
+    stakeholders: [jordan._id],
   });
-  await submitEvidenceAt(gA1._id, alex._id, PLACEHOLDER_IMAGE, daysAgo(6), "verified");
+  await submitEvidenceAt(gA1._id, alex._id, PHOTO.proposalDesk, daysAgo(6), "verified");
   bump(alex, 10);
 
   const gA2StartDate = daysAgo(4);
@@ -155,25 +166,28 @@ async function main() {
   const gA2Submitted = gA2Occurrences.slice(1); // the rest: submitted
   const gA2 = await TaskGoal.create({
     creatorId: alex._id,
-    title: "Morning 5k run",
-    description: "Lace up before breakfast — Mon / Wed / Fri.",
+    title: "Get outside every morning",
+    description: "Paddle, hike, or walk somewhere scenic before breakfast — Mon / Wed / Fri.",
     goalType: "task",
     startDate: gA2StartDate,
     endDate: daysFromNow(10),
     status: "in_progress",
     daysOfWeek: gA2DaysOfWeek,
     penalizedDates: gA2Penalized,
-    stakeholders: [],
+    stakeholders: [jordan._id],
   });
+  const outdoorPhotos = [PHOTO.canoe, PHOTO.waterfall, PHOTO.coast];
+  let outdoorIndex = 0;
+  const nextOutdoorPhoto = () => outdoorPhotos[outdoorIndex++ % outdoorPhotos.length];
   for (const [i, d] of gA2Submitted.entries()) {
-    await submitEvidenceAt(gA2._id, alex._id, PLACEHOLDER_IMAGE, d, i % 2 === 0 ? "verified" : "pending");
+    await submitEvidenceAt(gA2._id, alex._id, nextOutdoorPhoto(), d, i % 2 === 0 ? "verified" : "pending");
     bump(alex, 10);
   }
   if (gA2Penalized.length > 0) bump(alex, -5);
   // Also seed a couple of extra, more-recent days so Alex has a visible streak
   // (streak counts ANY submission day, across all goals).
-  await submitEvidenceAt(gA2._id, alex._id, PLACEHOLDER_IMAGE, daysAgo(0), "verified");
-  await submitEvidenceAt(gA2._id, alex._id, PLACEHOLDER_IMAGE, daysAgo(1), "verified");
+  await submitEvidenceAt(gA2._id, alex._id, nextOutdoorPhoto(), daysAgo(0), "verified");
+  await submitEvidenceAt(gA2._id, alex._id, nextOutdoorPhoto(), daysAgo(1), "pending");
   bump(alex, 20);
 
   const gA3 = await ProjectGoal.create({
@@ -184,7 +198,7 @@ async function main() {
     startDate: daysAgo(15),
     endDate: daysFromNow(20),
     status: "in_progress",
-    stakeholders: [],
+    stakeholders: [priya._id],
     subtasks: [
       { title: "Design mockup in Figma", deadline: daysAgo(8), deadlinePenaltyApplied: true },
       { title: "Build homepage", deadline: daysFromNow(4), deadlinePenaltyApplied: false },
@@ -203,7 +217,7 @@ async function main() {
     status: "failed",
     daysOfWeek: [],
     penalizedDates: [gA4Date],
-    stakeholders: [],
+    stakeholders: [sam._id],
   });
   bump(alex, -5);
   await FailureReport.create({
@@ -218,14 +232,15 @@ async function main() {
   // --- Jordan ----------------------------------------------------------------
   const gJ1 = await TaskGoal.create({
     creatorId: jordan._id,
-    title: "Submit tax documents",
+    title: "List the old iPhone for sale",
+    description: "Photograph it and post the listing.",
     goalType: "task",
     endDate: daysAgo(3),
     status: "completed",
     daysOfWeek: [],
-    stakeholders: [],
+    stakeholders: [alex._id],
   });
-  await submitEvidenceAt(gJ1._id, jordan._id, PLACEHOLDER_IMAGE, daysAgo(3), "pending");
+  await submitEvidenceAt(gJ1._id, jordan._id, PHOTO.iphone, daysAgo(3), "pending");
   bump(jordan, 10);
 
   const gJ2Date = daysAgo(4);
@@ -237,7 +252,7 @@ async function main() {
     status: "failed",
     daysOfWeek: [],
     penalizedDates: [gJ2Date],
-    stakeholders: [],
+    stakeholders: [alex._id],
   });
   bump(jordan, -5);
   await FailureReport.create({
@@ -250,18 +265,19 @@ async function main() {
   const gJ3 = await ProjectGoal.create({
     creatorId: jordan._id,
     title: "Redesign resume",
+    description: "Rewrite it from scratch with real notes and references.",
     goalType: "project",
     startDate: daysAgo(10),
     endDate: daysFromNow(9),
     status: "in_progress",
-    stakeholders: [],
+    stakeholders: [alex._id],
     subtasks: [
       { title: "Draft content", deadline: daysAgo(2), deadlinePenaltyApplied: false },
       { title: "Get feedback from 3 people", deadline: daysFromNow(5), deadlinePenaltyApplied: false },
     ],
   });
   const jordanDraftSubtask = gJ3.subtasks[0]._id;
-  await submitEvidenceAt(gJ3._id, jordan._id, PLACEHOLDER_IMAGE, daysAgo(2), "verified", jordanDraftSubtask);
+  await submitEvidenceAt(gJ3._id, jordan._id, PHOTO.studyDesk, daysAgo(2), "verified", jordanDraftSubtask);
   bump(jordan, 10);
 
   // --- Sam ---------------------------------------------------------------
@@ -270,16 +286,24 @@ async function main() {
   const gS1Occurrences = elapsedOccurrences(gS1StartDate, gS1DaysOfWeek);
   const gS1 = await TaskGoal.create({
     creatorId: sam._id,
-    title: "Practice guitar",
+    title: "Photography practice",
+    description: "Shoot and edit one animal portrait per session — Tue / Thu / Sat.",
     goalType: "task",
     startDate: gS1StartDate,
     endDate: daysFromNow(12),
     status: "in_progress",
     daysOfWeek: gS1DaysOfWeek,
-    stakeholders: [],
+    stakeholders: [alex._id],
   });
-  for (const d of gS1Occurrences) {
-    await submitEvidenceAt(gS1._id, sam._id, PLACEHOLDER_IMAGE, d, "verified");
+  const portraitPhotos = [PHOTO.lioness, PHOTO.pug];
+  for (const [i, d] of gS1Occurrences.entries()) {
+    await submitEvidenceAt(
+      gS1._id,
+      sam._id,
+      portraitPhotos[i % portraitPhotos.length],
+      d,
+      i % 2 === 0 ? "verified" : "pending",
+    );
     bump(sam, 10);
   }
 
@@ -292,40 +316,37 @@ async function main() {
     status: "failed",
     daysOfWeek: [],
     penalizedDates: [gS2Date],
-    stakeholders: [],
+    stakeholders: [priya._id],
   });
   bump(sam, -5); // left unreported — Sam hasn't gotten around to explaining this one
 
   // --- Priya ---------------------------------------------------------------
-  const gP1 = await ProjectGoal.create({
+  // Priya's goals are all still ahead of their deadlines — no posts from her,
+  // which keeps every feed photo matched to a goal it actually depicts.
+  await ProjectGoal.create({
     creatorId: priya._id,
     title: "Plan community fundraiser",
     goalType: "project",
     startDate: daysAgo(12),
     endDate: daysFromNow(15),
     status: "in_progress",
-    stakeholders: [],
+    stakeholders: [sam._id],
     subtasks: [
-      { title: "Book venue", deadline: daysAgo(6), deadlinePenaltyApplied: false },
-      { title: "Send invitations", deadline: daysFromNow(3), deadlinePenaltyApplied: false },
+      { title: "Book venue", deadline: daysFromNow(2), deadlinePenaltyApplied: false },
+      { title: "Send invitations", deadline: daysFromNow(6), deadlinePenaltyApplied: false },
       { title: "Confirm catering", deadline: daysFromNow(10), deadlinePenaltyApplied: false },
     ],
   });
-  const priyaVenueSubtask = gP1.subtasks[0]._id;
-  await submitEvidenceAt(gP1._id, priya._id, PLACEHOLDER_IMAGE, daysAgo(6), "verified", priyaVenueSubtask);
-  bump(priya, 10);
 
-  const gP2 = await TaskGoal.create({
+  await TaskGoal.create({
     creatorId: priya._id,
     title: "Complete online course module",
     goalType: "task",
-    endDate: daysAgo(1),
-    status: "completed",
+    endDate: daysFromNow(3),
+    status: "in_progress",
     daysOfWeek: [],
-    stakeholders: [],
+    stakeholders: [sam._id],
   });
-  await submitEvidenceAt(gP2._id, priya._id, PLACEHOLDER_IMAGE, daysAgo(1), "pending");
-  bump(priya, 10);
 
   // --- Marcus ---------------------------------------------------------------
   await TaskGoal.create({
@@ -335,7 +356,7 @@ async function main() {
     endDate: daysFromNow(5),
     status: "in_progress",
     daysOfWeek: [],
-    stakeholders: [],
+    stakeholders: [jordan._id],
   });
 
   const gM2Date = daysAgo(2);
@@ -347,7 +368,7 @@ async function main() {
     status: "failed",
     daysOfWeek: [],
     penalizedDates: [gM2Date],
-    stakeholders: [],
+    stakeholders: [jordan._id],
   });
   bump(marcus, -5);
   await FailureReport.create({
