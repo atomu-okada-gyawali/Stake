@@ -30,6 +30,22 @@ interface Task {
   variant: "filled" | "outlined";
 }
 
+interface HistoryEntry {
+  key: string;
+  date: string;
+  sortTime: number;
+  title: string;
+  description: string;
+  status: "VERIFIED" | "FAILED";
+  reportedReason?: string;
+  onReport?: () => void;
+}
+
+const formatHistoryDate = (d: string | number | Date) =>
+  new Date(d)
+    .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    .toUpperCase();
+
 function ProgressBar({ fill }: { fill: number }) {
   return (
     <div className="w-full h-1 bg-[#353534]">
@@ -45,6 +61,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
+  const [completedHistory, setCompletedHistory] = useState<HistoryEntry[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [failureHistory, setFailureHistory] = useState<FailureHistoryItem[]>([]);
@@ -97,6 +114,8 @@ export default function ProfilePage() {
           goalType: string;
           startDate?: string;
           endDate?: string;
+          status: string;
+          updatedAt: string;
           submittedForCurrentPeriod: boolean;
           subtasks?: { id: string; title: string; deadline: string; submitted: boolean }[];
         }[];
@@ -110,7 +129,20 @@ export default function ProfilePage() {
           }).toUpperCase();
 
         const mapped: Task[] = [];
+        const completed: HistoryEntry[] = [];
         for (const g of goals) {
+          if (g.status === "completed") {
+            completed.push({
+              key: g.id,
+              date: formatHistoryDate(g.updatedAt),
+              sortTime: new Date(g.updatedAt).getTime(),
+              title: g.title,
+              description: g.description ?? "",
+              status: "VERIFIED",
+            });
+            continue;
+          }
+
           if (g.goalType === "project") {
             for (const st of g.subtasks ?? []) {
               if (st.submitted) continue;
@@ -134,6 +166,7 @@ export default function ProfilePage() {
           }
         }
         setTasks(mapped);
+        setCompletedHistory(completed);
       } catch {
         toast.error("Failed to load your tasks");
       } finally {
@@ -248,9 +281,6 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center justify-between border-b border-[#444933] pb-3 mb-6">
                 <h2 className="text-white text-2xl font-bold">Current Tasks</h2>
-                <span className="bg-stake-accent/10 text-stake-accent text-[10px] font-bold px-2 py-1 uppercase">
-                  ACTIVE JOURNEY
-                </span>
               </div>
 
               {tasksLoading ? (
@@ -315,38 +345,43 @@ export default function ProfilePage() {
             <div>
               <div className="flex items-center justify-between border-b border-[#444933] pb-3 mb-6">
                 <h2 className="text-white text-2xl font-bold">Tasks History</h2>
-                <button className="text-stake-muted text-[10px] font-bold uppercase hover:text-white transition-colors">
-                  VIEW ALL ARCHIVE
-                </button>
               </div>
 
-              {failureHistoryLoading ? (
+              {failureHistoryLoading || tasksLoading ? (
                 <div className="text-stake-muted/50 text-sm text-center py-8">
                   Loading...
                 </div>
-              ) : failureHistory.length === 0 ? (
+              ) : failureHistory.length === 0 && completedHistory.length === 0 ? (
                 <div className="text-stake-muted/50 text-sm text-center py-8">
-                  No missed deadlines yet.
+                  No completed or missed tasks yet.
                 </div>
               ) : (
-                <div className="divide-y divide-[#444933]/30">
-                  {failureHistory.map((item) => (
-                    <HistoryItem
-                      key={`${item.goalId}-${item.subtaskId ?? ""}-${item.occurrenceDate ?? item.date}`}
-                      title={item.title}
-                      date={new Date(item.date)
-                        .toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })
-                        .toUpperCase()}
-                      description={item.description ?? "Deadline passed without evidence submitted."}
-                      status="FAILED"
-                      reportedReason={item.reason}
-                      onFailureReport={() => setReportingItem(item)}
-                    />
-                  ))}
+                <div className="space-y-4">
+                  {[
+                    ...completedHistory,
+                    ...failureHistory.map((item): HistoryEntry => ({
+                      key: `${item.goalId}-${item.subtaskId ?? ""}-${item.occurrenceDate ?? item.date}`,
+                      date: formatHistoryDate(item.date),
+                      sortTime: new Date(item.date).getTime(),
+                      title: item.title,
+                      description: item.description ?? "Deadline passed without evidence submitted.",
+                      status: "FAILED",
+                      reportedReason: item.reason,
+                      onReport: () => setReportingItem(item),
+                    })),
+                  ]
+                    .sort((a, b) => b.sortTime - a.sortTime)
+                    .map((entry) => (
+                      <HistoryItem
+                        key={entry.key}
+                        title={entry.title}
+                        date={entry.date}
+                        description={entry.description}
+                        status={entry.status}
+                        reportedReason={entry.reportedReason}
+                        onFailureReport={entry.onReport}
+                      />
+                    ))}
                 </div>
               )}
             </div>

@@ -20,19 +20,28 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   reportedReason,
 }) => {
   const isSuccess = status === "VERIFIED";
+  const accent = isSuccess ? "text-stake-accent" : "text-stake-dangerText";
+  const alreadySubmitted = isSuccess || !!reportedReason;
 
   return (
-    <div className="py-5 flex gap-5">
-      <div
-        className={`w-10 h-10 border flex items-center justify-center shrink-0 ${
-          isSuccess ? "border-stake-accent/40" : "border-stake-dangerText/40"
-        }`}
-      >
+    <div className="bg-stake-card border border-[#444933]/30 p-5">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <span className={`text-xs font-bold uppercase ${accent}`}>{date}</span>
+          <h3 className="text-white text-2xl font-bold">{title}</h3>
+          <p className="text-stake-muted text-base">{description}</p>
+          {!isSuccess && reportedReason && (
+            <p className="text-stake-muted/70 text-xs italic pt-1">
+              &ldquo;{reportedReason}&rdquo;
+            </p>
+          )}
+        </div>
         <svg
-          className={`w-5 h-5 ${isSuccess ? "text-stake-accent" : "text-stake-dangerText"}`}
+          className={`w-7 h-8 mt-4 shrink-0 ${accent}`}
+          viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          viewBox="0 0 24 24"
+          strokeWidth="2"
         >
           {isSuccess ? (
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
@@ -41,42 +50,18 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
           )}
         </svg>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-stake-muted uppercase tracking-wider">
-            {date}
-          </span>
-          <span
-            className={`text-[10px] font-bold px-2 py-0.5 uppercase ${
-              isSuccess
-                ? "bg-stake-accent/10 text-stake-accent"
-                : "bg-stake-dangerText/10 text-stake-dangerText"
-            }`}
-          >
-            {isSuccess ? "VERIFIED" : "REPUTATION DROP"}
-          </span>
-        </div>
-        <h4 className={`text-lg font-bold mt-1 ${isSuccess ? "text-white" : "text-stake-muted"}`}>
-          {title}
-        </h4>
-        <p className={`text-xs mt-1 ${isSuccess ? "text-stake-muted" : "text-stake-muted/60"}`}>
-          {description}
-        </p>
-        {!isSuccess && (
-          <>
-            {reportedReason && (
-              <p className="mt-2 text-stake-muted/70 text-xs italic">
-                &ldquo;{reportedReason}&rdquo;
-              </p>
-            )}
-            <button
-              onClick={onFailureReport}
-              className="mt-3 text-stake-dangerText text-[10px] font-bold uppercase hover:opacity-80 transition-opacity"
-            >
-              {reportedReason ? "Edit Failure Report" : "Submit Failure Report"}
-            </button>
-          </>
-        )}
+      <div className="mt-5">
+        <button
+          onClick={isSuccess ? undefined : onFailureReport}
+          disabled={alreadySubmitted}
+          className={`px-8 py-3 font-bold text-xs uppercase transition-all ${
+            alreadySubmitted
+              ? "bg-stake-muted/10 text-stake-muted cursor-not-allowed"
+              : "bg-stake-dangerText text-[#2B0A06] hover:brightness-95"
+          }`}
+        >
+          {isSuccess ? "Completed" : reportedReason ? "Report Submitted" : "Submit Failure Report"}
+        </button>
       </div>
     </div>
   );
